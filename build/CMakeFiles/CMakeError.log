@@ -1,0 +1,210 @@
+Detecting C compiler ABI info failed to compile with the following output:
+Change Dir: /Users/jinyiyong/Documents/Optimization/DayAheadForecast/build/CMakeFiles/CMakeScratch/TryCompile-GIBchT
+
+Run Build Command(s):/usr/bin/make -f Makefile cmTC_4acdb/fast && /Library/Developer/CommandLineTools/usr/bin/make  -f CMakeFiles/cmTC_4acdb.dir/build.make CMakeFiles/cmTC_4acdb.dir/build
+Building C object CMakeFiles/cmTC_4acdb.dir/CMakeCCompilerABI.c.o
+/opt/homebrew/bin/aarch64-apple-darwin21-gcc-11   -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX13.0.sdk   -v -Wl,-v -o CMakeFiles/cmTC_4acdb.dir/CMakeCCompilerABI.c.o -c /opt/homebrew/Cellar/cmake/3.25.1/share/cmake/Modules/CMakeCCompilerABI.c
+aarch64-apple-darwin21-gcc-11: warning: could not understand version 13.00.00
+Using built-in specs.
+COLLECT_GCC=/opt/homebrew/bin/aarch64-apple-darwin21-gcc-11
+Target: aarch64-apple-darwin21
+Configured with: ../configure --prefix=/opt/homebrew/opt/gcc --libdir=/opt/homebrew/opt/gcc/lib/gcc/11 --disable-nls --enable-checking=release --with-gcc-major-version-only --enable-languages=c,c++,objc,obj-c++,fortran --program-suffix=-11 --with-gmp=/opt/homebrew/opt/gmp --with-mpfr=/opt/homebrew/opt/mpfr --with-mpc=/opt/homebrew/opt/libmpc --with-isl=/opt/homebrew/opt/isl --with-zstd=/opt/homebrew/opt/zstd --with-pkgversion='Homebrew GCC 11.2.0_3' --with-bugurl=https://github.com/Homebrew/homebrew-core/issues --build=aarch64-apple-darwin21 --with-system-zlib --with-native-system-header-dir=/usr/include --with-sysroot=/Library/Developer/CommandLineTools/SDKs/MacOSX12.sdk
+Thread model: posix
+Supported LTO compression algorithms: zlib zstd
+gcc version 11.2.0 (Homebrew GCC 11.2.0_3) 
+COLLECT_GCC_OPTIONS='-isysroot' '/Library/Developer/CommandLineTools/SDKs/MacOSX13.0.sdk' '-v' '-o' 'CMakeFiles/cmTC_4acdb.dir/CMakeCCompilerABI.c.o' '-c' '-mlittle-endian' '-mabi=lp64' '-dumpdir' 'CMakeFiles/cmTC_4acdb.dir/'
+ /opt/homebrew/Cellar/gcc/11.2.0_3/bin/../libexec/gcc/aarch64-apple-darwin21/11/cc1 -quiet -v -iprefix /opt/homebrew/Cellar/gcc/11.2.0_3/bin/../lib/gcc/11/gcc/aarch64-apple-darwin21/11/ -D__DYNAMIC__ -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX13.0.sdk /opt/homebrew/Cellar/cmake/3.25.1/share/cmake/Modules/CMakeCCompilerABI.c -fPIC -quiet -dumpdir CMakeFiles/cmTC_4acdb.dir/ -dumpbase CMakeCCompilerABI.c.c -dumpbase-ext .c -mlittle-endian -mabi=lp64 -version -o /var/folders/4f/ll38rx255klcxftt254q2vwh0000gn/T//ccwkQLGK.s
+GNU C17 (Homebrew GCC 11.2.0_3) version 11.2.0 (aarch64-apple-darwin21)
+	compiled by GNU C version 11.2.0, GMP version 6.2.1, MPFR version 4.1.0, MPC version 1.2.1, isl version isl-0.24-GMP
+
+GGC heuristics: --param ggc-min-expand=100 --param ggc-min-heapsize=131072
+ignoring nonexistent directory "/opt/homebrew/Cellar/gcc/11.2.0_3/bin/../lib/gcc/11/gcc/aarch64-apple-darwin21/11/../../../../../../aarch64-apple-darwin21/include"
+ignoring duplicate directory "/opt/homebrew/Cellar/gcc/11.2.0_3/bin/../lib/gcc/11/gcc/../../../../lib/gcc/11/gcc/aarch64-apple-darwin21/11/include"
+ignoring nonexistent directory "/Library/Developer/CommandLineTools/SDKs/MacOSX13.0.sdk/usr/local/include"
+ignoring duplicate directory "/opt/homebrew/Cellar/gcc/11.2.0_3/bin/../lib/gcc/11/gcc/../../../../lib/gcc/11/gcc/aarch64-apple-darwin21/11/include-fixed"
+ignoring nonexistent directory "/opt/homebrew/Cellar/gcc/11.2.0_3/bin/../lib/gcc/11/gcc/../../../../lib/gcc/11/gcc/aarch64-apple-darwin21/11/../../../../../../aarch64-apple-darwin21/include"
+ignoring nonexistent directory "/Library/Developer/CommandLineTools/SDKs/MacOSX13.0.sdk/Library/Frameworks"
+#include "..." search starts here:
+#include <...> search starts here:
+ /opt/homebrew/Cellar/gcc/11.2.0_3/bin/../lib/gcc/11/gcc/aarch64-apple-darwin21/11/include
+ /opt/homebrew/Cellar/gcc/11.2.0_3/bin/../lib/gcc/11/gcc/aarch64-apple-darwin21/11/include-fixed
+ /Library/Developer/CommandLineTools/SDKs/MacOSX13.0.sdk/usr/include
+ /Library/Developer/CommandLineTools/SDKs/MacOSX13.0.sdk/System/Library/Frameworks
+End of search list.
+GNU C17 (Homebrew GCC 11.2.0_3) version 11.2.0 (aarch64-apple-darwin21)
+	compiled by GNU C version 11.2.0, GMP version 6.2.1, MPFR version 4.1.0, MPC version 1.2.1, isl version isl-0.24-GMP
+
+GGC heuristics: --param ggc-min-expand=100 --param ggc-min-heapsize=131072
+Compiler executable checksum: f4072ac033bf4f816c844600ae76a986
+COLLECT_GCC_OPTIONS='-isysroot' '/Library/Developer/CommandLineTools/SDKs/MacOSX13.0.sdk' '-v' '-o' 'CMakeFiles/cmTC_4acdb.dir/CMakeCCompilerABI.c.o' '-c' '-mlittle-endian' '-mabi=lp64' '-dumpdir' 'CMakeFiles/cmTC_4acdb.dir/'
+ as -arch arm64 -v -o CMakeFiles/cmTC_4acdb.dir/CMakeCCompilerABI.c.o /var/folders/4f/ll38rx255klcxftt254q2vwh0000gn/T//ccwkQLGK.s
+Apple clang version 14.0.0 (clang-1400.0.29.202)
+Target: arm64-apple-darwin22.1.0
+Thread model: posix
+InstalledDir: /Library/Developer/CommandLineTools/usr/bin
+ "/Library/Developer/CommandLineTools/usr/bin/clang" -cc1as -triple arm64-apple-macosx13.0.0 -filetype obj -main-file-name ccwkQLGK.s -target-cpu apple-m1 -target-feature +v8.5a -target-feature +fp-armv8 -target-feature +neon -target-feature +crc -target-feature +crypto -target-feature +dotprod -target-feature +fp16fml -target-feature +ras -target-feature +lse -target-feature +rdm -target-feature +rcpc -target-feature +zcm -target-feature +zcz -target-feature +fullfp16 -target-feature +sm4 -target-feature +sha3 -target-feature +sha2 -target-feature +aes -fdebug-compilation-dir=/Users/jinyiyong/Documents/Optimization/DayAheadForecast/build/CMakeFiles/CMakeScratch/TryCompile-GIBchT -dwarf-debug-producer "Apple clang version 14.0.0 (clang-1400.0.29.202)" -dwarf-version=4 -mrelocation-model pic --mrelax-relocations -mllvm -disable-aligned-alloc-awareness=1 -o CMakeFiles/cmTC_4acdb.dir/CMakeCCompilerABI.c.o /var/folders/4f/ll38rx255klcxftt254q2vwh0000gn/T//ccwkQLGK.s
+COMPILER_PATH=/opt/homebrew/Cellar/gcc/11.2.0_3/bin/../libexec/gcc/aarch64-apple-darwin21/11/:/opt/homebrew/Cellar/gcc/11.2.0_3/bin/../libexec/gcc/
+LIBRARY_PATH=/opt/homebrew/Cellar/gcc/11.2.0_3/bin/../lib/gcc/11/gcc/aarch64-apple-darwin21/11/:/opt/homebrew/Cellar/gcc/11.2.0_3/bin/../lib/gcc/11/gcc/:/opt/homebrew/Cellar/gcc/11.2.0_3/bin/../lib/gcc/11/gcc/aarch64-apple-darwin21/11/../../../
+COLLECT_GCC_OPTIONS='-isysroot' '/Library/Developer/CommandLineTools/SDKs/MacOSX13.0.sdk' '-v' '-o' 'CMakeFiles/cmTC_4acdb.dir/CMakeCCompilerABI.c.o' '-c' '-mlittle-endian' '-mabi=lp64' '-dumpdir' 'CMakeFiles/cmTC_4acdb.dir/CMakeCCompilerABI.c.'
+Linking C executable cmTC_4acdb
+/opt/homebrew/Cellar/cmake/3.25.1/bin/cmake -E cmake_link_script CMakeFiles/cmTC_4acdb.dir/link.txt --verbose=1
+/opt/homebrew/bin/aarch64-apple-darwin21-gcc-11  -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX13.0.sdk -Wl,-search_paths_first -Wl,-headerpad_max_install_names  -v -Wl,-v CMakeFiles/cmTC_4acdb.dir/CMakeCCompilerABI.c.o -o cmTC_4acdb 
+aarch64-apple-darwin21-gcc-11: warning: could not understand version 13.00.00
+Using built-in specs.
+COLLECT_GCC=/opt/homebrew/bin/aarch64-apple-darwin21-gcc-11
+COLLECT_LTO_WRAPPER=/opt/homebrew/Cellar/gcc/11.2.0_3/bin/../libexec/gcc/aarch64-apple-darwin21/11/lto-wrapper
+Target: aarch64-apple-darwin21
+Configured with: ../configure --prefix=/opt/homebrew/opt/gcc --libdir=/opt/homebrew/opt/gcc/lib/gcc/11 --disable-nls --enable-checking=release --with-gcc-major-version-only --enable-languages=c,c++,objc,obj-c++,fortran --program-suffix=-11 --with-gmp=/opt/homebrew/opt/gmp --with-mpfr=/opt/homebrew/opt/mpfr --with-mpc=/opt/homebrew/opt/libmpc --with-isl=/opt/homebrew/opt/isl --with-zstd=/opt/homebrew/opt/zstd --with-pkgversion='Homebrew GCC 11.2.0_3' --with-bugurl=https://github.com/Homebrew/homebrew-core/issues --build=aarch64-apple-darwin21 --with-system-zlib --with-native-system-header-dir=/usr/include --with-sysroot=/Library/Developer/CommandLineTools/SDKs/MacOSX12.sdk
+Thread model: posix
+Supported LTO compression algorithms: zlib zstd
+gcc version 11.2.0 (Homebrew GCC 11.2.0_3) 
+COMPILER_PATH=/opt/homebrew/Cellar/gcc/11.2.0_3/bin/../libexec/gcc/aarch64-apple-darwin21/11/:/opt/homebrew/Cellar/gcc/11.2.0_3/bin/../libexec/gcc/
+LIBRARY_PATH=/opt/homebrew/Cellar/gcc/11.2.0_3/bin/../lib/gcc/11/gcc/aarch64-apple-darwin21/11/:/opt/homebrew/Cellar/gcc/11.2.0_3/bin/../lib/gcc/11/gcc/:/opt/homebrew/Cellar/gcc/11.2.0_3/bin/../lib/gcc/11/gcc/aarch64-apple-darwin21/11/../../../
+COLLECT_GCC_OPTIONS='-isysroot' '/Library/Developer/CommandLineTools/SDKs/MacOSX13.0.sdk' '-v' '-o' 'cmTC_4acdb' '-mlittle-endian' '-mabi=lp64' '-dumpdir' 'cmTC_4acdb.'
+ /opt/homebrew/Cellar/gcc/11.2.0_3/bin/../libexec/gcc/aarch64-apple-darwin21/11/collect2 -dynamic -arch arm64 -syslibroot /Library/Developer/CommandLineTools/SDKs/MacOSX13.0.sdk -weak_reference_mismatches non-weak -o cmTC_4acdb -lcrt1.o -L/opt/homebrew/Cellar/gcc/11.2.0_3/bin/../lib/gcc/11/gcc/aarch64-apple-darwin21/11 -L/opt/homebrew/Cellar/gcc/11.2.0_3/bin/../lib/gcc/11/gcc -L/opt/homebrew/Cellar/gcc/11.2.0_3/bin/../lib/gcc/11/gcc/aarch64-apple-darwin21/11/../../.. -search_paths_first -headerpad_max_install_names -v CMakeFiles/cmTC_4acdb.dir/CMakeCCompilerABI.c.o -lgcc_s.1.1 -lgcc_eh -lgcc -lSystem -lgcc -rpath /opt/homebrew/Cellar/gcc/11.2.0_3/bin/../lib/gcc/11/gcc/aarch64-apple-darwin21/11 -rpath /opt/homebrew/Cellar/gcc/11.2.0_3/bin/../lib/gcc/11/gcc -rpath /opt/homebrew/Cellar/gcc/11.2.0_3/bin/../lib/gcc/11/gcc/aarch64-apple-darwin21/11/../../.. -v
+collect2 version 11.2.0
+/usr/bin/ld -dynamic -arch arm64 -syslibroot /Library/Developer/CommandLineTools/SDKs/MacOSX13.0.sdk -weak_reference_mismatches non-weak -o cmTC_4acdb -lcrt1.o -L/opt/homebrew/Cellar/gcc/11.2.0_3/bin/../lib/gcc/11/gcc/aarch64-apple-darwin21/11 -L/opt/homebrew/Cellar/gcc/11.2.0_3/bin/../lib/gcc/11/gcc -L/opt/homebrew/Cellar/gcc/11.2.0_3/bin/../lib/gcc/11/gcc/aarch64-apple-darwin21/11/../../.. -search_paths_first -headerpad_max_install_names -v CMakeFiles/cmTC_4acdb.dir/CMakeCCompilerABI.c.o -lgcc_s.1.1 -lgcc_eh -lgcc -lSystem -lgcc -rpath /opt/homebrew/Cellar/gcc/11.2.0_3/bin/../lib/gcc/11/gcc/aarch64-apple-darwin21/11 -rpath /opt/homebrew/Cellar/gcc/11.2.0_3/bin/../lib/gcc/11/gcc -rpath /opt/homebrew/Cellar/gcc/11.2.0_3/bin/../lib/gcc/11/gcc/aarch64-apple-darwin21/11/../../.. -v
+@(#)PROGRAM:ld  PROJECT:ld64-820.1
+BUILD 18:42:42 Sep 11 2022
+configured to support archs: armv6 armv7 armv7s arm64 arm64e arm64_32 i386 x86_64 x86_64h armv6m armv7k armv7m armv7em
+@(#)PROGRAM:ld  PROJECT:ld64-820.1
+BUILD 18:42:42 Sep 11 2022
+configured to support archs: armv6 armv7 armv7s arm64 arm64e arm64_32 i386 x86_64 x86_64h armv6m armv7k armv7m armv7em
+Library search paths:
+	/opt/homebrew/Cellar/gcc/11.2.0_3/lib/gcc/11/gcc/aarch64-apple-darwin21/11
+	/opt/homebrew/Cellar/gcc/11.2.0_3/lib/gcc/11/gcc
+	/opt/homebrew/Cellar/gcc/11.2.0_3/lib/gcc/11
+	/Library/Developer/CommandLineTools/SDKs/MacOSX13.0.sdk/usr/lib
+Framework search paths:
+	/Library/Developer/CommandLineTools/SDKs/MacOSX13.0.sdk/System/Library/Frameworks/
+ld: -rpath can only be used when targeting Mac OS X 10.5 or later
+collect2: error: ld returned 1 exit status
+make[1]: *** [cmTC_4acdb] Error 1
+make: *** [cmTC_4acdb/fast] Error 2
+
+
+
+
+Determining if the C compiler works failed with the following output:
+Change Dir: /Users/jinyiyong/Documents/Optimization/DayAheadForecast/build/CMakeFiles/CMakeScratch/TryCompile-2kXkzG
+
+Run Build Command(s):/usr/bin/make -f Makefile cmTC_ca789/fast && /Library/Developer/CommandLineTools/usr/bin/make  -f CMakeFiles/cmTC_ca789.dir/build.make CMakeFiles/cmTC_ca789.dir/build
+Building C object CMakeFiles/cmTC_ca789.dir/testCCompiler.c.o
+/opt/homebrew/bin/aarch64-apple-darwin21-gcc-11   -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX13.0.sdk -o CMakeFiles/cmTC_ca789.dir/testCCompiler.c.o -c /Users/jinyiyong/Documents/Optimization/DayAheadForecast/build/CMakeFiles/CMakeScratch/TryCompile-2kXkzG/testCCompiler.c
+aarch64-apple-darwin21-gcc-11: warning: could not understand version 13.00.00
+Linking C executable cmTC_ca789
+/opt/homebrew/Cellar/cmake/3.25.1/bin/cmake -E cmake_link_script CMakeFiles/cmTC_ca789.dir/link.txt --verbose=1
+/opt/homebrew/bin/aarch64-apple-darwin21-gcc-11  -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX13.0.sdk -Wl,-search_paths_first -Wl,-headerpad_max_install_names CMakeFiles/cmTC_ca789.dir/testCCompiler.c.o -o cmTC_ca789 
+aarch64-apple-darwin21-gcc-11: warning: could not understand version 13.00.00
+ld: -rpath can only be used when targeting Mac OS X 10.5 or later
+collect2: error: ld returned 1 exit status
+make[1]: *** [cmTC_ca789] Error 1
+make: *** [cmTC_ca789/fast] Error 2
+
+
+
+Detecting C compiler ABI info failed to compile with the following output:
+Change Dir: /Users/jinyiyong/Documents/Optimization/DayAheadForecast/build/CMakeFiles/CMakeScratch/TryCompile-zczMdv
+
+Run Build Command(s):/usr/bin/make -f Makefile cmTC_c2e0b/fast && /Library/Developer/CommandLineTools/usr/bin/make  -f CMakeFiles/cmTC_c2e0b.dir/build.make CMakeFiles/cmTC_c2e0b.dir/build
+Building C object CMakeFiles/cmTC_c2e0b.dir/CMakeCCompilerABI.c.o
+/opt/homebrew/bin/aarch64-apple-darwin21-gcc-11   -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX13.0.sdk   -v -Wl,-v -o CMakeFiles/cmTC_c2e0b.dir/CMakeCCompilerABI.c.o -c /opt/homebrew/Cellar/cmake/3.25.1/share/cmake/Modules/CMakeCCompilerABI.c
+aarch64-apple-darwin21-gcc-11: warning: could not understand version 13.00.00
+Using built-in specs.
+COLLECT_GCC=/opt/homebrew/bin/aarch64-apple-darwin21-gcc-11
+Target: aarch64-apple-darwin21
+Configured with: ../configure --prefix=/opt/homebrew/opt/gcc --libdir=/opt/homebrew/opt/gcc/lib/gcc/11 --disable-nls --enable-checking=release --with-gcc-major-version-only --enable-languages=c,c++,objc,obj-c++,fortran --program-suffix=-11 --with-gmp=/opt/homebrew/opt/gmp --with-mpfr=/opt/homebrew/opt/mpfr --with-mpc=/opt/homebrew/opt/libmpc --with-isl=/opt/homebrew/opt/isl --with-zstd=/opt/homebrew/opt/zstd --with-pkgversion='Homebrew GCC 11.2.0_3' --with-bugurl=https://github.com/Homebrew/homebrew-core/issues --build=aarch64-apple-darwin21 --with-system-zlib --with-native-system-header-dir=/usr/include --with-sysroot=/Library/Developer/CommandLineTools/SDKs/MacOSX12.sdk
+Thread model: posix
+Supported LTO compression algorithms: zlib zstd
+gcc version 11.2.0 (Homebrew GCC 11.2.0_3) 
+COLLECT_GCC_OPTIONS='-isysroot' '/Library/Developer/CommandLineTools/SDKs/MacOSX13.0.sdk' '-v' '-o' 'CMakeFiles/cmTC_c2e0b.dir/CMakeCCompilerABI.c.o' '-c' '-mlittle-endian' '-mabi=lp64' '-dumpdir' 'CMakeFiles/cmTC_c2e0b.dir/'
+ /opt/homebrew/Cellar/gcc/11.2.0_3/bin/../libexec/gcc/aarch64-apple-darwin21/11/cc1 -quiet -v -iprefix /opt/homebrew/Cellar/gcc/11.2.0_3/bin/../lib/gcc/11/gcc/aarch64-apple-darwin21/11/ -D__DYNAMIC__ -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX13.0.sdk /opt/homebrew/Cellar/cmake/3.25.1/share/cmake/Modules/CMakeCCompilerABI.c -fPIC -quiet -dumpdir CMakeFiles/cmTC_c2e0b.dir/ -dumpbase CMakeCCompilerABI.c.c -dumpbase-ext .c -mlittle-endian -mabi=lp64 -version -o /var/folders/4f/ll38rx255klcxftt254q2vwh0000gn/T//cc896KQI.s
+GNU C17 (Homebrew GCC 11.2.0_3) version 11.2.0 (aarch64-apple-darwin21)
+	compiled by GNU C version 11.2.0, GMP version 6.2.1, MPFR version 4.1.0, MPC version 1.2.1, isl version isl-0.24-GMP
+
+GGC heuristics: --param ggc-min-expand=100 --param ggc-min-heapsize=131072
+ignoring nonexistent directory "/opt/homebrew/Cellar/gcc/11.2.0_3/bin/../lib/gcc/11/gcc/aarch64-apple-darwin21/11/../../../../../../aarch64-apple-darwin21/include"
+ignoring duplicate directory "/opt/homebrew/Cellar/gcc/11.2.0_3/bin/../lib/gcc/11/gcc/../../../../lib/gcc/11/gcc/aarch64-apple-darwin21/11/include"
+ignoring nonexistent directory "/Library/Developer/CommandLineTools/SDKs/MacOSX13.0.sdk/usr/local/include"
+ignoring duplicate directory "/opt/homebrew/Cellar/gcc/11.2.0_3/bin/../lib/gcc/11/gcc/../../../../lib/gcc/11/gcc/aarch64-apple-darwin21/11/include-fixed"
+ignoring nonexistent directory "/opt/homebrew/Cellar/gcc/11.2.0_3/bin/../lib/gcc/11/gcc/../../../../lib/gcc/11/gcc/aarch64-apple-darwin21/11/../../../../../../aarch64-apple-darwin21/include"
+ignoring nonexistent directory "/Library/Developer/CommandLineTools/SDKs/MacOSX13.0.sdk/Library/Frameworks"
+#include "..." search starts here:
+#include <...> search starts here:
+ /opt/homebrew/Cellar/gcc/11.2.0_3/bin/../lib/gcc/11/gcc/aarch64-apple-darwin21/11/include
+ /opt/homebrew/Cellar/gcc/11.2.0_3/bin/../lib/gcc/11/gcc/aarch64-apple-darwin21/11/include-fixed
+ /Library/Developer/CommandLineTools/SDKs/MacOSX13.0.sdk/usr/include
+ /Library/Developer/CommandLineTools/SDKs/MacOSX13.0.sdk/System/Library/Frameworks
+End of search list.
+GNU C17 (Homebrew GCC 11.2.0_3) version 11.2.0 (aarch64-apple-darwin21)
+	compiled by GNU C version 11.2.0, GMP version 6.2.1, MPFR version 4.1.0, MPC version 1.2.1, isl version isl-0.24-GMP
+
+GGC heuristics: --param ggc-min-expand=100 --param ggc-min-heapsize=131072
+Compiler executable checksum: f4072ac033bf4f816c844600ae76a986
+COLLECT_GCC_OPTIONS='-isysroot' '/Library/Developer/CommandLineTools/SDKs/MacOSX13.0.sdk' '-v' '-o' 'CMakeFiles/cmTC_c2e0b.dir/CMakeCCompilerABI.c.o' '-c' '-mlittle-endian' '-mabi=lp64' '-dumpdir' 'CMakeFiles/cmTC_c2e0b.dir/'
+ as -arch arm64 -v -o CMakeFiles/cmTC_c2e0b.dir/CMakeCCompilerABI.c.o /var/folders/4f/ll38rx255klcxftt254q2vwh0000gn/T//cc896KQI.s
+Apple clang version 14.0.0 (clang-1400.0.29.202)
+Target: arm64-apple-darwin22.1.0
+Thread model: posix
+InstalledDir: /Library/Developer/CommandLineTools/usr/bin
+ "/Library/Developer/CommandLineTools/usr/bin/clang" -cc1as -triple arm64-apple-macosx13.0.0 -filetype obj -main-file-name cc896KQI.s -target-cpu apple-m1 -target-feature +v8.5a -target-feature +fp-armv8 -target-feature +neon -target-feature +crc -target-feature +crypto -target-feature +dotprod -target-feature +fp16fml -target-feature +ras -target-feature +lse -target-feature +rdm -target-feature +rcpc -target-feature +zcm -target-feature +zcz -target-feature +fullfp16 -target-feature +sm4 -target-feature +sha3 -target-feature +sha2 -target-feature +aes -fdebug-compilation-dir=/Users/jinyiyong/Documents/Optimization/DayAheadForecast/build/CMakeFiles/CMakeScratch/TryCompile-zczMdv -dwarf-debug-producer "Apple clang version 14.0.0 (clang-1400.0.29.202)" -dwarf-version=4 -mrelocation-model pic --mrelax-relocations -mllvm -disable-aligned-alloc-awareness=1 -o CMakeFiles/cmTC_c2e0b.dir/CMakeCCompilerABI.c.o /var/folders/4f/ll38rx255klcxftt254q2vwh0000gn/T//cc896KQI.s
+COMPILER_PATH=/opt/homebrew/Cellar/gcc/11.2.0_3/bin/../libexec/gcc/aarch64-apple-darwin21/11/:/opt/homebrew/Cellar/gcc/11.2.0_3/bin/../libexec/gcc/
+LIBRARY_PATH=/opt/homebrew/Cellar/gcc/11.2.0_3/bin/../lib/gcc/11/gcc/aarch64-apple-darwin21/11/:/opt/homebrew/Cellar/gcc/11.2.0_3/bin/../lib/gcc/11/gcc/:/opt/homebrew/Cellar/gcc/11.2.0_3/bin/../lib/gcc/11/gcc/aarch64-apple-darwin21/11/../../../
+COLLECT_GCC_OPTIONS='-isysroot' '/Library/Developer/CommandLineTools/SDKs/MacOSX13.0.sdk' '-v' '-o' 'CMakeFiles/cmTC_c2e0b.dir/CMakeCCompilerABI.c.o' '-c' '-mlittle-endian' '-mabi=lp64' '-dumpdir' 'CMakeFiles/cmTC_c2e0b.dir/CMakeCCompilerABI.c.'
+Linking C executable cmTC_c2e0b
+/opt/homebrew/Cellar/cmake/3.25.1/bin/cmake -E cmake_link_script CMakeFiles/cmTC_c2e0b.dir/link.txt --verbose=1
+/opt/homebrew/bin/aarch64-apple-darwin21-gcc-11  -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX13.0.sdk -Wl,-search_paths_first -Wl,-headerpad_max_install_names  -v -Wl,-v CMakeFiles/cmTC_c2e0b.dir/CMakeCCompilerABI.c.o -o cmTC_c2e0b 
+aarch64-apple-darwin21-gcc-11: warning: could not understand version 13.00.00
+Using built-in specs.
+COLLECT_GCC=/opt/homebrew/bin/aarch64-apple-darwin21-gcc-11
+COLLECT_LTO_WRAPPER=/opt/homebrew/Cellar/gcc/11.2.0_3/bin/../libexec/gcc/aarch64-apple-darwin21/11/lto-wrapper
+Target: aarch64-apple-darwin21
+Configured with: ../configure --prefix=/opt/homebrew/opt/gcc --libdir=/opt/homebrew/opt/gcc/lib/gcc/11 --disable-nls --enable-checking=release --with-gcc-major-version-only --enable-languages=c,c++,objc,obj-c++,fortran --program-suffix=-11 --with-gmp=/opt/homebrew/opt/gmp --with-mpfr=/opt/homebrew/opt/mpfr --with-mpc=/opt/homebrew/opt/libmpc --with-isl=/opt/homebrew/opt/isl --with-zstd=/opt/homebrew/opt/zstd --with-pkgversion='Homebrew GCC 11.2.0_3' --with-bugurl=https://github.com/Homebrew/homebrew-core/issues --build=aarch64-apple-darwin21 --with-system-zlib --with-native-system-header-dir=/usr/include --with-sysroot=/Library/Developer/CommandLineTools/SDKs/MacOSX12.sdk
+Thread model: posix
+Supported LTO compression algorithms: zlib zstd
+gcc version 11.2.0 (Homebrew GCC 11.2.0_3) 
+COMPILER_PATH=/opt/homebrew/Cellar/gcc/11.2.0_3/bin/../libexec/gcc/aarch64-apple-darwin21/11/:/opt/homebrew/Cellar/gcc/11.2.0_3/bin/../libexec/gcc/
+LIBRARY_PATH=/opt/homebrew/Cellar/gcc/11.2.0_3/bin/../lib/gcc/11/gcc/aarch64-apple-darwin21/11/:/opt/homebrew/Cellar/gcc/11.2.0_3/bin/../lib/gcc/11/gcc/:/opt/homebrew/Cellar/gcc/11.2.0_3/bin/../lib/gcc/11/gcc/aarch64-apple-darwin21/11/../../../
+COLLECT_GCC_OPTIONS='-isysroot' '/Library/Developer/CommandLineTools/SDKs/MacOSX13.0.sdk' '-v' '-o' 'cmTC_c2e0b' '-mlittle-endian' '-mabi=lp64' '-dumpdir' 'cmTC_c2e0b.'
+ /opt/homebrew/Cellar/gcc/11.2.0_3/bin/../libexec/gcc/aarch64-apple-darwin21/11/collect2 -dynamic -arch arm64 -syslibroot /Library/Developer/CommandLineTools/SDKs/MacOSX13.0.sdk -weak_reference_mismatches non-weak -o cmTC_c2e0b -lcrt1.o -L/opt/homebrew/Cellar/gcc/11.2.0_3/bin/../lib/gcc/11/gcc/aarch64-apple-darwin21/11 -L/opt/homebrew/Cellar/gcc/11.2.0_3/bin/../lib/gcc/11/gcc -L/opt/homebrew/Cellar/gcc/11.2.0_3/bin/../lib/gcc/11/gcc/aarch64-apple-darwin21/11/../../.. -search_paths_first -headerpad_max_install_names -v CMakeFiles/cmTC_c2e0b.dir/CMakeCCompilerABI.c.o -lgcc_s.1.1 -lgcc_eh -lgcc -lSystem -lgcc -rpath /opt/homebrew/Cellar/gcc/11.2.0_3/bin/../lib/gcc/11/gcc/aarch64-apple-darwin21/11 -rpath /opt/homebrew/Cellar/gcc/11.2.0_3/bin/../lib/gcc/11/gcc -rpath /opt/homebrew/Cellar/gcc/11.2.0_3/bin/../lib/gcc/11/gcc/aarch64-apple-darwin21/11/../../.. -v
+collect2 version 11.2.0
+/usr/bin/ld -dynamic -arch arm64 -syslibroot /Library/Developer/CommandLineTools/SDKs/MacOSX13.0.sdk -weak_reference_mismatches non-weak -o cmTC_c2e0b -lcrt1.o -L/opt/homebrew/Cellar/gcc/11.2.0_3/bin/../lib/gcc/11/gcc/aarch64-apple-darwin21/11 -L/opt/homebrew/Cellar/gcc/11.2.0_3/bin/../lib/gcc/11/gcc -L/opt/homebrew/Cellar/gcc/11.2.0_3/bin/../lib/gcc/11/gcc/aarch64-apple-darwin21/11/../../.. -search_paths_first -headerpad_max_install_names -v CMakeFiles/cmTC_c2e0b.dir/CMakeCCompilerABI.c.o -lgcc_s.1.1 -lgcc_eh -lgcc -lSystem -lgcc -rpath /opt/homebrew/Cellar/gcc/11.2.0_3/bin/../lib/gcc/11/gcc/aarch64-apple-darwin21/11 -rpath /opt/homebrew/Cellar/gcc/11.2.0_3/bin/../lib/gcc/11/gcc -rpath /opt/homebrew/Cellar/gcc/11.2.0_3/bin/../lib/gcc/11/gcc/aarch64-apple-darwin21/11/../../.. -v
+@(#)PROGRAM:ld  PROJECT:ld64-820.1
+BUILD 18:42:42 Sep 11 2022
+configured to support archs: armv6 armv7 armv7s arm64 arm64e arm64_32 i386 x86_64 x86_64h armv6m armv7k armv7m armv7em
+@(#)PROGRAM:ld  PROJECT:ld64-820.1
+BUILD 18:42:42 Sep 11 2022
+configured to support archs: armv6 armv7 armv7s arm64 arm64e arm64_32 i386 x86_64 x86_64h armv6m armv7k armv7m armv7em
+Library search paths:
+	/opt/homebrew/Cellar/gcc/11.2.0_3/lib/gcc/11/gcc/aarch64-apple-darwin21/11
+	/opt/homebrew/Cellar/gcc/11.2.0_3/lib/gcc/11/gcc
+	/opt/homebrew/Cellar/gcc/11.2.0_3/lib/gcc/11
+	/Library/Developer/CommandLineTools/SDKs/MacOSX13.0.sdk/usr/lib
+Framework search paths:
+	/Library/Developer/CommandLineTools/SDKs/MacOSX13.0.sdk/System/Library/Frameworks/
+ld: -rpath can only be used when targeting Mac OS X 10.5 or later
+collect2: error: ld returned 1 exit status
+make[1]: *** [cmTC_c2e0b] Error 1
+make: *** [cmTC_c2e0b/fast] Error 2
+
+
+
+
+Determining if the C compiler works failed with the following output:
+Change Dir: /Users/jinyiyong/Documents/Optimization/DayAheadForecast/build/CMakeFiles/CMakeScratch/TryCompile-y2mt4X
+
+Run Build Command(s):/usr/bin/make -f Makefile cmTC_a046f/fast && /Library/Developer/CommandLineTools/usr/bin/make  -f CMakeFiles/cmTC_a046f.dir/build.make CMakeFiles/cmTC_a046f.dir/build
+Building C object CMakeFiles/cmTC_a046f.dir/testCCompiler.c.o
+/opt/homebrew/bin/aarch64-apple-darwin21-gcc-11   -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX13.0.sdk -o CMakeFiles/cmTC_a046f.dir/testCCompiler.c.o -c /Users/jinyiyong/Documents/Optimization/DayAheadForecast/build/CMakeFiles/CMakeScratch/TryCompile-y2mt4X/testCCompiler.c
+aarch64-apple-darwin21-gcc-11: warning: could not understand version 13.00.00
+Linking C executable cmTC_a046f
+/opt/homebrew/Cellar/cmake/3.25.1/bin/cmake -E cmake_link_script CMakeFiles/cmTC_a046f.dir/link.txt --verbose=1
+/opt/homebrew/bin/aarch64-apple-darwin21-gcc-11  -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX13.0.sdk -Wl,-search_paths_first -Wl,-headerpad_max_install_names CMakeFiles/cmTC_a046f.dir/testCCompiler.c.o -o cmTC_a046f 
+aarch64-apple-darwin21-gcc-11: warning: could not understand version 13.00.00
+ld: -rpath can only be used when targeting Mac OS X 10.5 or later
+collect2: error: ld returned 1 exit status
+make[1]: *** [cmTC_a046f] Error 1
+make: *** [cmTC_a046f/fast] Error 2
+
+
+

@@ -1,0 +1,7 @@
+[
+{
+  "directory": "/Users/jinyiyong/Documents/Optimization/DayAheadForecast/build",
+  "command": "/usr/bin/clang++ -DIL_STD -I/Applications/CPLEX_Studio201/cplex/include -I/Applications/CPLEX_Studio201/concert/include  -stdlib=libc++ -L/usr/local/opt/llvm/lib -I/usr/local/opt/llvm/include -g -arch x86_64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX13.0.sdk -fPIE -std=gnu++17 -o CMakeFiles/DayAheadForecast.dir/main.cpp.o -c /Users/jinyiyong/Documents/Optimization/DayAheadForecast/main.cpp",
+  "file": "/Users/jinyiyong/Documents/Optimization/DayAheadForecast/main.cpp"
+}
+]
