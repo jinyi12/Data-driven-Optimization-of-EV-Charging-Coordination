@@ -393,9 +393,9 @@ int main(int, char **) {
   IloExpr expr_fParking(env);
   for (int s = 0; s < nbScenarios; s++) {
     for (int i = 0; i < nbStations; i++) {
-      expr_fParking +=
-          (e[s][i][t0]) * timeInterval - (rebaterate * timeInterval * prob[s] *
-                                PredictedOnOffChargingStatus[s][i][t0]);
+      expr_fParking += (e[s][i][t0]) * timeInterval -
+                       (rebaterate * timeInterval * prob[s] *
+                        PredictedOnOffChargingStatus[s][i][t0]);
     }
   }
   expr_fParking = rparking * expr_fParking;
@@ -406,9 +406,9 @@ int main(int, char **) {
   for (int s = 0; s < nbScenarios; s++) {
     for (int t = t0 + 1; t < t0 + H; t++) {
       for (int i = 0; i < nbStations; i++) {
-        expr_fPredictedParking +=
-            (e[s][i][t]) * timeInterval - (rebaterate * timeInterval * prob[s] *
-                                  PredictedOnOffChargingStatus[s][i][t]);
+        expr_fPredictedParking += (e[s][i][t]) * timeInterval -
+                                  (rebaterate * timeInterval * prob[s] *
+                                   PredictedOnOffChargingStatus[s][i][t]);
       }
     }
   }
@@ -426,11 +426,11 @@ int main(int, char **) {
     for (int i = 0; i < nbStations; i++) {
       expr_fCharging_i +=
           (rcharging * RealTimeChargingPower[s][i][t0] * timeInterval -
-            RealTimeUtilityPowerOutput[s][t0] * RealTimeBuySellStatus[s][t0] *
-                TOUPurchasePrice[t0] * timeInterval -
-            RealTimeUtilityPowerOutput[s][t0] *
-                (1 - RealTimeBuySellStatus[s][t0]) * TOUSellPrice[t0] *
-                timeInterval);
+           RealTimeUtilityPowerOutput[s][t0] * RealTimeBuySellStatus[s][t0] *
+               TOUPurchasePrice[t0] * timeInterval -
+           RealTimeUtilityPowerOutput[s][t0] *
+               (1 - RealTimeBuySellStatus[s][t0]) * TOUSellPrice[t0] *
+               timeInterval);
     }
     expr_fCharging += prob[s] * expr_fCharging_i;
   }
@@ -454,14 +454,16 @@ int main(int, char **) {
 
   // define expression for \hat{R} = \hat{R}_{\text {charging }} +
   // \hat{R}_{\text {parking }} - C_{\text {operation }}
-  IloExpr expr_RHat(env);
-  expr_RHat = expr_RHatParking + expr_fCharging - fixedcost;
+  IloExpr expr_f(env);
+  expr_f = expr_fParking + expr_fCharging + expr_fPredictedParking +
+           expr_fPredictedCharging;
 
-  model.add(IloMaximize(env, expr_RHat));
-  expr_RHat.end();
-  expr_RHatParking.end();
+  model.add(IloMaximize(env, expr_f));
+  expr_f.end();
   expr_fCharging.end();
   expr_fParking.end();
+  expr_fPredictedCharging.end();
+  expr_fPredictedParking.end();
 
   return 0;
 }
