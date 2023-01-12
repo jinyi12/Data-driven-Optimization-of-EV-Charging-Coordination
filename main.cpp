@@ -107,7 +107,6 @@ int main(int, char **) {
   std::vector<double> tPredictedIn_vec(nbStations);
   std::vector<double> tPredictedOut_vec(nbStations);
 
-
   for (int i = 0; i < nbStations; i++) {
     tout_vec[i] = std::round(norm_dist_out(rng));
     tin_vec[i] = std::round(norm_dist_in(rng));
@@ -121,8 +120,6 @@ int main(int, char **) {
     tPredictedIn[i] = tPredictedIn_vec[i];
     tPredictedOut[i] = tPredictedOut_vec[i];
   }
-
-
 
   // initialize ON/OFF for predicted charging status, for each scenario,
   // charging station, and time period
@@ -232,8 +229,8 @@ int main(int, char **) {
     }
   }
 
-
-  // variable to indicate whether the ith EV is parked during time period [T_{in, i} , T_{out, i}]
+  // variable to indicate whether the ith EV is parked during time period
+  // [T_{in, i} , T_{out, i}]
   NumMatrix3D e(env, nbScenarios);
   for (int s = 0; s < nbScenarios; s++) {
     e[s] = NumMatrix2D(env, nbStations);
@@ -243,14 +240,15 @@ int main(int, char **) {
   }
 
   // if T_{in, i} <= t0 && (T_{in, i} <= t <= T_{out, i}) then e = 1
-  // if T_{in, i} > 0 && (Tpredicted_{in, i} <= t <= Tpredicted_{out, i}) then e = 1
-  // else e = 0
+  // if T_{in, i} > 0 && (Tpredicted_{in, i} <= t <= Tpredicted_{out, i}) then e
+  // = 1 else e = 0
   for (int s = 0; s < nbScenarios; s++) {
     for (int i = 0; i < nbStations; i++) {
       for (int t = t0; t < t0 + H; t++) {
         if (tin[i] <= t0 && tin[i] <= t && t <= tout[i]) {
           e[s][i][t] = 1;
-        } else if (tin[i] > 0 && tPredictedIn[i] <= t && t <= tPredictedOut[i]) {
+        } else if (tin[i] > 0 && tPredictedIn[i] <= t &&
+                   t <= tPredictedOut[i]) {
           e[s][i][t] = 1;
         } else {
           e[s][i][t] = 0;
@@ -258,7 +256,6 @@ int main(int, char **) {
       }
     }
   }
-
 
   // ---------------------------------------------------------------------------
   // *************** 3. constraints ***************
@@ -286,8 +283,8 @@ int main(int, char **) {
       for (int i = 0; i < nbStations; i++) {
         expr -= PredictedChargingPower[s][i][t];
       }
-    model.add(expr == 0);
-    expr.end();
+      model.add(expr == 0);
+      expr.end();
     }
   }
 
@@ -380,9 +377,6 @@ int main(int, char **) {
   // *************** 4. objective function ***************
   // ---------------------------------------------------------------------------
 
-
-
-
   // define expression for \begin{aligned}
   // & \sum_{i=1}^N \hat{t}_{\text {parking },
   // i}=\sum_{i=1}^N\left[\hat{T}_{\text {out }, i}-\hat{T}_{\mathrm{in},
@@ -396,21 +390,29 @@ int main(int, char **) {
   // ($\hat{T}_{\text{out}, i}$) and the time of EV entry ($\hat{T}_{\text{in},
   // i}$) for all $i$ from 1 to $N$, and then subtract parking fee rebate rate *
   // time interval * prob[s] * DayAheadOnOffChargingStatus .
-  IloExpr expr_tHatParking(env);
+  IloExpr expr_fParking(env);
   for (int s = 0; s < nbScenarios; s++) {
     for (int i = 0; i < nbStations; i++) {
-      for (int t = 0; t < nbTime; t++) {
-        expr_tHatParking +=
-            (tout[i] - tin[i]) - (rebaterate * timeInterval * prob[s] *
-                                    PredictedOnOffChargingStatus[s][i][t]);
-      }
+      expr_fParking +=
+          (e[s][i][t0]) * timeInterval - (rebaterate * timeInterval * prob[s] *
+                                PredictedOnOffChargingStatus[s][i][t0]);
     }
   }
+  expr_fParking = rparking * expr_fParking;
 
   // define expression for \hat{R}_{\text {parking }}=r_{\text {parking }}
   // \sum_{i=1}^N \hat{t}_{\text {parking }, i}
-  IloExpr expr_RHatParking(env);
-  expr_RHatParking = rparking * expr_tHatParking;
+  IloExpr expr_fPredictedParking(env);
+  for (int s = 0; s < nbScenarios; s++) {
+    for (int t = t0 + 1; t < t0 + H; t++) {
+      for (int i = 0; i < nbStations; i++) {
+        expr_fPredictedParking +=
+            (e[s][i][t]) * timeInterval - (rebaterate * timeInterval * prob[s] *
+                                  PredictedOnOffChargingStatus[s][i][t]);
+      }
+    }
+  }
+  expr_fPredictedParking = rparking * expr_fPredictedParking;
 
   // define expression for expected day-ahead charging revenue
   // \hat{R}_{\text {charging }}=\sum_{s=1}^S
@@ -418,12 +420,27 @@ int main(int, char **) {
   // \hat{P}_{s, i}(t) \Delta t -\hat{P}_{\text {grid }, s}(t) \hat{y}_s(t)
   // c(t) \Delta t - \hat{P}_{\text {grid }, s} (1-\hat{y}_s(t)) h(t) \Delta t
 
-  IloExpr expr_RHatCharging(env);
+  IloExpr expr_fCharging(env);
   for (int s = 0; s < nbScenarios; s++) {
-    for (int t = 0; t < nbTime; t++) {
-      IloExpr expr_RHatCharging_i(env);
+    IloExpr expr_fCharging_i(env);
+    for (int i = 0; i < nbStations; i++) {
+      expr_fCharging_i +=
+          (rcharging * RealTimeChargingPower[s][i][t0] * timeInterval -
+            RealTimeUtilityPowerOutput[s][t0] * RealTimeBuySellStatus[s][t0] *
+                TOUPurchasePrice[t0] * timeInterval -
+            RealTimeUtilityPowerOutput[s][t0] *
+                (1 - RealTimeBuySellStatus[s][t0]) * TOUSellPrice[t0] *
+                timeInterval);
+    }
+    expr_fCharging += prob[s] * expr_fCharging_i;
+  }
+
+  IloExpr expr_fPredictedCharging(env);
+  for (int s = 0; s < nbScenarios; s++) {
+    for (int t = t0 + 1; t < t0 + H; t++) {
+      IloExpr expr_fPredictedCharging_i(env);
       for (int i = 0; i < nbStations; i++) {
-        expr_RHatCharging_i +=
+        expr_fPredictedCharging_i +=
             (rcharging * RealTimeChargingPower[s][i][t] * timeInterval -
              RealTimeUtilityPowerOutput[s][t] * RealTimeBuySellStatus[s][t] *
                  TOUPurchasePrice[t] * timeInterval -
@@ -431,20 +448,20 @@ int main(int, char **) {
                  (1 - RealTimeBuySellStatus[s][t]) * TOUSellPrice[t] *
                  timeInterval);
       }
-      expr_RHatCharging += prob[s] * expr_RHatCharging_i;
+      expr_fPredictedCharging += prob[s] * expr_fPredictedCharging_i;
     }
   }
 
   // define expression for \hat{R} = \hat{R}_{\text {charging }} +
   // \hat{R}_{\text {parking }} - C_{\text {operation }}
   IloExpr expr_RHat(env);
-  expr_RHat = expr_RHatParking + expr_RHatCharging - fixedcost;
+  expr_RHat = expr_RHatParking + expr_fCharging - fixedcost;
 
   model.add(IloMaximize(env, expr_RHat));
   expr_RHat.end();
   expr_RHatParking.end();
-  expr_RHatCharging.end();
-  expr_tHatParking.end();
+  expr_fCharging.end();
+  expr_fParking.end();
 
   return 0;
 }
