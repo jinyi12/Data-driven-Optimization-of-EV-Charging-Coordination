@@ -87,6 +87,6 @@ if __name__ == "__main__":
     # plt.show()
 
     # save the distributions to .mat files
-    scipy.io.savemat('Data/arrival_distribution.mat', mdict={'arrival_distribution': arrival_distribution})
-    scipy.io.savemat('Data/departure_distribution.mat', mdict={'departure_distribution': departure_distribution})
+    scipy.io.savemat('Data/arrival_distribution_predicted.mat', mdict={'arrival_distribution_predicted': arrival_distribution})
+    scipy.io.savemat('Data/departure_distribution_predicted.mat', mdict={'departure_distribution_predicted': departure_distribution})
 
