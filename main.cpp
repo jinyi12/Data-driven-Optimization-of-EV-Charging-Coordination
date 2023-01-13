@@ -23,6 +23,8 @@ typedef IloArray<IloNumArray> NumMatrix2D;
 typedef IloArray<NumMatrix2D> NumMatrix3D;
 typedef IloArray<IloExprArray> ExprArray2D;
 
+// void matread(const char *file, const char *name, std::vector<double> &v);
+
 int main(int, char **) {
   printf("Hello World!");
 
@@ -107,12 +109,35 @@ int main(int, char **) {
   std::vector<double> tPredictedIn_vec(nbStations);
   std::vector<double> tPredictedOut_vec(nbStations);
 
-  for (int i = 0; i < nbStations; i++) {
-    tout_vec[i] = std::round(norm_dist_out(rng));
-    tin_vec[i] = std::round(norm_dist_in(rng));
-    tPredictedIn_vec[i] = std::round(norm_dist_in(rng));
-    tPredictedOut_vec[i] = std::round(norm_dist_out(rng));
+  // read arrival and departure .csv files located in the data folder and
+  // initialize tout and tin, tPredicterIn and tPredictedOut
+  const char *arrival_file = "Data/arrival_distribution.csv";
+  const char *departure_file = "Data/departure_distribution.csv";
+
+  // read arrival distribution
+  IloCsvReader arrival_reader(env, arrival_file);
+  IloCsvReader::LineIterator arrival_it(arrival_reader);
+  IloCsvLine arrival_line = *arrival_it;
+
+  int index = 0;
+  while (arrival_it.ok()) {
+    tin[index] = arrival_line.getFloatByPosition(0);
+    ++arrival_it;
   }
+
+  // read departure distribution
+  std::ifstream file(departure_file);
+  std::string line;
+  if (file.is_open()) {
+    while (getline(file, line)) {
+      tout_vec.push_back(std::stod(line));
+    }
+    file.close();
+  } else {
+    std::cout << "Unable to open file";
+  }
+
+  
 
   for (int i = 0; i < nbStations; i++) {
     tout[i] = tout_vec[i];
@@ -467,3 +492,28 @@ int main(int, char **) {
 
   return 0;
 }
+
+// void matread(const char *file, const char *name, std::vector<double> &v) {
+//   MATFile *pmat;
+//   mxArray *pa;
+//   pmat = matOpen(file, "r");
+//   if (pmat == NULL) {
+//     printf("Error opening file %s", file);
+//     return;
+//   }
+
+//   pa = matGetVariable(pmat, name);
+//   if (pa != NULL && mxIsDouble(pa) && !mxIsEmpty(pa)) {
+//     // copy data
+//     mwSize num = mxGetNumberOfElements(pa);
+//     double *pr = mxGetPr(pa);
+//     if (pr != NULL) {
+//       v.reserve(num); // is faster than resize :-)
+//       v.assign(pr, pr + num);
+//     }
+//   }
+
+//     // cleanup
+//   mxDestroyArray(pa);
+//   matClose(pmat);
+// }
