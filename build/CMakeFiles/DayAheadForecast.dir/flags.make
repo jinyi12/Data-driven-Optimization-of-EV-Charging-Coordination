@@ -4,9 +4,9 @@
 # compile CXX with /usr/bin/clang++
 CXX_DEFINES = -DIL_STD
 
-CXX_INCLUDES = -I/Applications/CPLEX_Studio201/cplex/include -I/Applications/CPLEX_Studio201/concert/include
+CXX_INCLUDES = -I/Applications/CPLEX_Studio201/cplex/include -I/Applications/CPLEX_Studio201/concert/include -I/Applications/MATLAB_R2021a.app/extern/include
 
-CXX_FLAGSx86_64 =  -stdlib=libc++ -L/usr/local/opt/llvm/lib -I/usr/local/opt/llvm/include -g -arch x86_64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX13.0.sdk -fPIE -std=gnu++17
+CXX_FLAGSx86_64 =  -stdlib=libc++ -L/opt/homebrew/llvm/lib -I/opt/homebrew/llvm/include -g -arch x86_64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX13.0.sdk -fPIE -std=gnu++17
 
-CXX_FLAGS =  -stdlib=libc++ -L/usr/local/opt/llvm/lib -I/usr/local/opt/llvm/include -g -arch x86_64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX13.0.sdk -fPIE -std=gnu++17
+CXX_FLAGS =  -stdlib=libc++ -L/opt/homebrew/llvm/lib -I/opt/homebrew/llvm/include -g -arch x86_64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX13.0.sdk -fPIE -std=gnu++17
 

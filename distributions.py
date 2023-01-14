@@ -79,7 +79,7 @@ if __name__ == "__main__":
     departure_distribution = np.concatenate((weibull_departure1, weibull_departure2))
 
     # plot arrival distribution
-    # plt.hist(arrival_distribution, bins=50)
+    # plt.hist(arrival_distribution, bins=50)s
     # plt.show()
 
     # plot departure distribution
@@ -89,4 +89,9 @@ if __name__ == "__main__":
     # save the distributions to .mat files
     scipy.io.savemat('Data/arrival_distribution.mat', mdict={'arrival_distribution': arrival_distribution})
     scipy.io.savemat('Data/departure_distribution.mat', mdict={'departure_distribution': departure_distribution})
+
+    # save the distributions to .csv files
+    pd.DataFrame(arrival_distribution).to_csv('Data/arrival_distribution.csv', index=False, header=False)
+    pd.DataFrame(departure_distribution).to_csv('Data/departure_distribution.csv', index=False, header=False)
+
 

@@ -3,6 +3,7 @@
 #include "ilconcert/iloexpression.h"
 #include "ilconcert/ilosys.h"
 #include <cstdio>
+#include <filesystem>
 #include <fstream>
 #include <ilconcert/ilocsvreader.h>
 #include <ilcplex/ilocplex.h>
@@ -22,6 +23,8 @@ typedef IloArray<NumVarMatrix2D> NumVarMatrix3D;
 typedef IloArray<IloNumArray> NumMatrix2D;
 typedef IloArray<NumMatrix2D> NumMatrix3D;
 typedef IloArray<IloExprArray> ExprArray2D;
+
+// void matread(const char *file, const char *name, std::vector<double> &v);
 
 int main(int, char **) {
   printf("Hello World!");
@@ -107,12 +110,56 @@ int main(int, char **) {
   std::vector<double> tPredictedIn_vec(nbStations);
   std::vector<double> tPredictedOut_vec(nbStations);
 
-  for (int i = 0; i < nbStations; i++) {
-    tout_vec[i] = std::round(norm_dist_out(rng));
-    tin_vec[i] = std::round(norm_dist_in(rng));
-    tPredictedIn_vec[i] = std::round(norm_dist_in(rng));
-    tPredictedOut_vec[i] = std::round(norm_dist_out(rng));
+  // read arrival and departure .csv files located in the data folder and
+  // initialize tout and tin, tPredicterIn and tPredictedOut
+  std::filesystem::path current_path = std::filesystem::current_path();
+  std::cout << "Current path is : " << current_path << std::endl;
+  // go to parent path
+  current_path = current_path.parent_path();
+
+  std::cout << "Current path now is : " << current_path << std::endl;
+
+  const char *arrival_file = "Data/arrival_distribution.csv";
+  std::filesystem::path arrival_path = current_path / arrival_file;
+  const char *arrival_path_char = arrival_path.c_str();
+
+  const char *departure_file = "Data/departure_distribution.csv";
+  std::filesystem::path departure_path = current_path / departure_file;
+  const char *departure_path_char = departure_path.c_str();
+
+  const char *arrival_predicted_file = "Data/arrival_distribution_predicted.csv";
+  std::filesystem::path arrival_predicted_path = current_path / arrival_predicted_file;
+  const char *arrival_predicted_path_char = arrival_predicted_path.c_str();
+
+  const char *departure_predicted_file =
+      "Data/departure_distribution_predicted.csv";
+  std::filesystem::path departure_predicted_path = current_path / departure_predicted_file;
+  const char *departure_predicted_path_char = departure_predicted_path.c_str();
+
+  // read arrival distribution
+  IloCsvReader arrival_reader(env, arrival_path_char);
+  IloCsvReader::LineIterator arrival_it(arrival_reader);
+  IloCsvLine arrival_line = *arrival_it;
+
+  int index = 0;
+  while (arrival_it.ok()) {
+    tin[index] = arrival_line.getFloatByPosition(0);
+    ++arrival_it;
   }
+
+  // read departure distribution
+  std::ifstream file(departure_path_char);
+  std::string line;
+  if (file.is_open()) {
+    while (getline(file, line)) {
+      tout_vec.push_back(std::stod(line));
+    }
+    file.close();
+  } else {
+    std::cout << "Unable to open file";
+  }
+
+  
 
   for (int i = 0; i < nbStations; i++) {
     tout[i] = tout_vec[i];
@@ -167,13 +214,13 @@ int main(int, char **) {
   // $s$th scenario, in kW
   NumVarMatrix2D RealTimeUtilityPowerOutput(env, nbScenarios);
   for (int s = 0; s < nbScenarios; s++) {
-    RealTimeUtilityPowerOutput[s] = IloNumVarArray(env, nbTime);
+    RealTimeUtilityPowerOutput[s] = IloNumVarArray(env, nbTime, -IloInfinity, IloInfinity);
   }
   // initialize predicted power output from utility grid at $t$th interval,
   // under $s$th scenario, in kW
   NumVarMatrix2D PredictedUtilityPowerOutput(env, nbScenarios);
   for (int s = 0; s < nbScenarios; s++) {
-    PredictedUtilityPowerOutput[s] = IloNumVarArray(env, nbTime);
+    PredictedUtilityPowerOutput[s] = IloNumVarArray(env, nbTime, -IloInfinity, IloInfinity);
   }
 
   // intialize day-ahead buy/sell (1/0) status at $t$th interval, under $s$th
@@ -192,7 +239,7 @@ int main(int, char **) {
 
   // initialize electricity purchase price from the grid at $t$th time interval
   // ($/kWh)
-  IloNumArray ElectricityPurchasePrice(env, nbTime);
+  IloNumArray ElectricityPurchasePrice(env, nbTime, 0, IloInfinity);
 
   // ---------------------------------------------------------------------------
 
@@ -204,7 +251,7 @@ int main(int, char **) {
   // $s$ in kW
   NumVarMatrix2D RealTimeSolarOutput(env, nbScenarios);
   for (int s = 0; s < nbScenarios; s++) {
-    RealTimeSolarOutput[s] = IloNumVarArray(env, nbTime);
+    RealTimeSolarOutput[s] = IloNumVarArray(env, nbTime, 0, IloInfinity);
   }
 
   // initialize state-of-charge (SOC) at $t$th interval, under scenario $s$, for
@@ -264,27 +311,31 @@ int main(int, char **) {
   // 1. Power balance
   // Total power output from solar and utility grid == Sum of EV charging load
 
+  IloExprArray expr_powerbalance_predicted(env, nbScenarios);
+
   for (int s = 0; s < nbScenarios; s++) {
-    IloExpr expr(env);
-    expr += RealTimeSolarOutput[s][t0];
-    expr += RealTimeUtilityPowerOutput[s][t0];
+    expr_powerbalance_predicted[s] = RealTimeSolarOutput[s][t0] - RealTimeSolarOutput[s][t0];
+    expr_powerbalance_predicted[s] += RealTimeSolarOutput[s][t0];
+    expr_powerbalance_predicted[s] += RealTimeUtilityPowerOutput[s][t0];
     for (int i = 0; i < nbStations; i++) {
-      expr -= RealTimeChargingPower[s][i][t0];
+      expr_powerbalance_predicted[s] -= RealTimeChargingPower[s][i][t0];
     }
-    model.add(expr == 0);
-    expr.end();
+    model.add(expr_powerbalance_predicted[s] == 0);
+  }
+
+  ExprArray2D expr_powerbalance_realtime(env, nbScenarios);
+  for (int s = 0; s < nbScenarios; s++) {
+    expr_powerbalance_realtime[s] = IloExprArray(env, H);
   }
 
   for (int s = 0; s < nbScenarios; s++) {
     for (int t = t0 + 1; t < t0 + H; t++) {
-      IloExpr expr(env);
-      expr += RealTimeSolarOutput[s][t];
-      expr += PredictedUtilityPowerOutput[s][t];
+      expr_powerbalance_realtime[s][t] += RealTimeSolarOutput[s][t];
+      expr_powerbalance_realtime[s][t] += PredictedUtilityPowerOutput[s][t];
       for (int i = 0; i < nbStations; i++) {
-        expr -= PredictedChargingPower[s][i][t];
+        expr_powerbalance_realtime[s][t] -= PredictedChargingPower[s][i][t];
       }
-      model.add(expr == 0);
-      expr.end();
+      model.add(expr_powerbalance_realtime[s][t] == 0);
     }
   }
 
@@ -464,6 +515,33 @@ int main(int, char **) {
   expr_fParking.end();
   expr_fPredictedCharging.end();
   expr_fPredictedParking.end();
+  // expr_powerbalance_predicted.end();
+  expr_powerbalance_realtime.end();
 
   return 0;
 }
+
+// void matread(const char *file, const char *name, std::vector<double> &v) {
+//   MATFile *pmat;
+//   mxArray *pa;
+//   pmat = matOpen(file, "r");
+//   if (pmat == NULL) {
+//     printf("Error opening file %s", file);
+//     return;
+//   }
+
+//   pa = matGetVariable(pmat, name);
+//   if (pa != NULL && mxIsDouble(pa) && !mxIsEmpty(pa)) {
+//     // copy data
+//     mwSize num = mxGetNumberOfElements(pa);
+//     double *pr = mxGetPr(pa);
+//     if (pr != NULL) {
+//       v.reserve(num); // is faster than resize :-)
+//       v.assign(pr, pr + num);
+//     }
+//   }
+
+//     // cleanup
+//   mxDestroyArray(pa);
+//   matClose(pmat);
+// }
