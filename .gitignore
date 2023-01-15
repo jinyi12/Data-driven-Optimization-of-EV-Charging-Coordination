@@ -1,6 +1,5 @@
-/.DS_Store
-/.ipynb_checkpoints!/build/.cmake/
-/build
-/.cache/
 /.idea/
 /cmake-build-debug
+/build
+/.ipynb_checkpoints
+/.cache
