@@ -60,7 +60,7 @@ ELSE(MATLAB_FOUND)
     MESSAGE("MATLAB not found...nothing will be built.")
 ENDIF(MATLAB_FOUND)
 
-add_executable(DayAheadForecast main.cpp )
+add_executable(DayAheadForecast main_dayahead.cpp)
 target_include_directories(DayAheadForecast PUBLIC ${CPLEX_INCLUDE_DIRS})
 target_link_libraries(DayAheadForecast PUBLIC ${CPLEX_LIBRARIES})
 
