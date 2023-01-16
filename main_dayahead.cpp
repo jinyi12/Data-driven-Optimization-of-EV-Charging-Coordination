@@ -50,12 +50,6 @@ int main(int, char **) {
     // fixed daily operational cost is equal to $4000 per 24 h. The number of
     // charging stations in this EV parking deck is assumed to be 300.
 
-    // start of real time optimization window
-    IloInt t0 = 0;
-
-    // real time horizon
-    IloInt H = 4;
-
     IloNum SOC_max = 1.0;
     IloNum rparking = 1.5;
     IloNum fixedcost = 4000;
@@ -64,14 +58,14 @@ int main(int, char **) {
     IloNum nbTime = 48;
     IloNum timeInterval = 0.5;
 
-    // IloNum rebateRate = 0.5;
     IloNum Gamma = 10000;
     IloNum Epsilon = 0.0001;
 
     // maximum charging power of each EV, in kW, using level 2 charging
     IloNum maxChargingPower = 19;
 
-    IloNumVar rebaterate, rcharging;
+    IloNumVar rebaterate;
+    IloNumVar rcharging;
 
     // Battery capacity for $i$th EV in kWh
     IloNumArray BatteryCapacity(env, nbStations);
@@ -105,8 +99,8 @@ int main(int, char **) {
     IloNumArray tPredictedOut(env, nbStations, 0, nbTime, ILOINT);
     IloNumArray tPredictedIn(env, nbStations, 0, nbTime, ILOINT);
 
-    std::vector<double> tout_vec(nbStations);
-    std::vector<double> tin_vec(nbStations);
+    std::vector<double> tHout_vec(nbStations);
+    std::vector<double> tHin_vec(nbStations);
     std::vector<double> tPredictedIn_vec(nbStations);
     std::vector<double> tPredictedOut_vec(nbStations);
 
@@ -152,7 +146,7 @@ int main(int, char **) {
     std::string line;
     if (file.is_open()) {
         while (getline(file, line)) {
-            tout_vec.push_back(std::stod(line));
+            tHout_vec.push_back(std::stod(line));
         }
         file.close();
     } else {
@@ -161,10 +155,8 @@ int main(int, char **) {
 
 
     for (int i = 0; i < nbStations; i++) {
-        tHout[i] = tout_vec[i];
-        tHin[i] = tin_vec[i];
-        tPredictedIn[i] = tPredictedIn_vec[i];
-        tPredictedOut[i] = tPredictedOut_vec[i];
+        tHout[i] = tHout_vec[i];
+        tHin[i] = tHin_vec[i];
     }
 
     // initialize ON/OFF for predicted charging status, for each scenario,
@@ -216,9 +208,9 @@ int main(int, char **) {
 
     // initialize Day-ahead solar output power in $t$th interval, under scenario
     // $s$ in kW
-    NumVarMatrix2D DayAheadSolarOutput(env, nbScenarios);
+    NumMatrix2D DayAheadSolarOutput(env, nbScenarios);
     for (int s = 0; s < nbScenarios; s++) {
-        DayAheadSolarOutput[s] = IloNumVarArray(env, nbTime, 0, IloInfinity);
+        DayAheadSolarOutput[s] = IloNumArray(env, nbTime, 0, IloInfinity);
     }
 
     // initialize state-of-charge (SOC) at $t$th interval, under scenario $s$, for
@@ -230,6 +222,8 @@ int main(int, char **) {
             SOC[s][i] = IloNumVarArray(env, nbTime, 0, 1, ILOFLOAT);
         }
     }
+    
+
 
     // ---------------------------------------------------------------------------
     // *************** 3. constraints ***************
@@ -361,6 +355,7 @@ int main(int, char **) {
                          (1 - DayAheadBuySellStatus[s][t]) * TOUSellPrice[t] * timeInterval);
             }
             expr_RHatCharging += prob[s] * expr_RHatCharging_i;
+            expr_RHatCharging_i.end();
         }
     }
 
