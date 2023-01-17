@@ -86,8 +86,52 @@ int main(int, char **) {
   }
 
   // TOU purchase price
-  IloNumArray TOUPurchasePrice(env, nbTime);
-  IloNumArray TOUSellPrice(env, nbTime);
+  IloNumArray TOUPurchasePrice(env, nbTime, 0, IloInfinity, ILOFLOAT);
+  IloNumArray TOUSellPrice(env, nbTime, 0, IloInfinity, ILOFLOAT);
+
+  // 08:00 to 11:00 mid-peak, 11:00 to 12:00 peak, 12:00 to 14:00 mid-peak,
+  // 14:00 to 17:00 peak, 17:00 to 22:00 mid peak, 22:00 to 08:00 off-peak
+  // TOU purchase price is 0.584/kWh on peak, 0.357 on mid-peak, and 0.281 on
+  // off peak
+  // TOU sell price is 10% cheaper than TOU purchase price
+  // According to the above comments, create TOU purchase price and TOU sell
+  // price arrays
+  // 48 time intervals, each time interval is 30 minutes
+
+  float off_peak = 0.281;
+  float mid_peak = 0.357;
+  float peak = 0.584;
+
+  for (int t = 0; t < nbTime; t++) {
+    if (t >= 0 && t < 16) {
+      TOUPurchasePrice[t] = off_peak;
+      TOUSellPrice[t] = 0.9 * off_peak;
+    }
+    if (t >= 16 && t < 22) {
+      TOUPurchasePrice[t] = mid_peak;
+      TOUSellPrice[t] = 0.9 * mid_peak;
+    }
+    if (t >= 22 && t < 24) {
+      TOUPurchasePrice[t] = peak;
+      TOUSellPrice[t] = 0.9 * peak;
+    }
+    if (t >= 24 && t < 28) {
+      TOUPurchasePrice[t] = mid_peak;
+      TOUSellPrice[t] = 0.9 * mid_peak;
+    }
+    if (t >= 28 && t < 34) {
+      TOUPurchasePrice[t] = peak;
+      TOUSellPrice[t] = 0.9 * peak;
+    }
+    if (t >= 34 && t < 40) {
+      TOUPurchasePrice[t] = mid_peak;
+      TOUSellPrice[t] = 0.9 * mid_peak;
+    }
+    if (t >= 40 && t < 48) {
+      TOUPurchasePrice[t] = off_peak;
+      TOUSellPrice[t] = 0.9 * off_peak;
+    }
+  }
 
   // ---------------------------------------------------------------------------
   // *************** 1. Initialize variables for objective function
@@ -249,18 +293,16 @@ int main(int, char **) {
   // Total power output from solar and utility grid == Sum of EV charging load
 
   for (int s = 0; s < nbScenarios; s++) {
+    IloExpr expr(env);
     for (int t = 0; t < nbTime; t++) {
-      IloExpr expr(env);
       expr += DayAheadSolarOutput[s][t];
       expr += DayAheadUtilityPowerOutput[s][t];
       for (int i = 0; i < nbStations; i++) {
         expr -= DayAheadChargingPower[s][i][t];
       }
-      model.add(expr == 0);
-      expr.
-
-          end();
     }
+    model.add(expr == 0);
+    expr.end();
   }
 
   // 2. Utility grid power output
@@ -344,7 +386,7 @@ int main(int, char **) {
       expr_tHatParking += (tHout[i] - tHin[i]);
       for (int t = 0; t < nbTime; t++) {
         expr_tHatParking += -(rebaterate * timeInterval * prob[s] *
-                                    DayAheadOnOffChargingStatus[s][i][t]);
+                              DayAheadOnOffChargingStatus[s][i][t]);
       }
     }
   }
@@ -373,7 +415,7 @@ int main(int, char **) {
                  (1 - DayAheadBuySellStatus[s][t]) * TOUSellPrice[t] *
                  timeInterval);
       }
-      expr_RHatCharging += prob[s] * expr_RHatCharging_i;
+      expr_RHatCharging += (prob[s] * expr_RHatCharging_i);
       expr_RHatCharging_i.end();
     }
   }
@@ -388,6 +430,24 @@ int main(int, char **) {
   expr_RHatParking.end();
   expr_RHatCharging.end();
   expr_tHatParking.end();
+
+  cplex.extract(model);
+  // CPLEX parameter setting :
+  // cplex.setParam(IloCplex::Param::MIP::Tolerances::MIPGap, 0.01);  //
+  // setting the optimal gap to be 0.01%
+  //  cplex.setParam(IloCplex::Param::MIP::Tolerances::MIPGap, 0.03);
+  // cplex.setParam(IloCplex::Param::MIP::Strategy::MIQCPStrat, 2);   //
+  // various setting, you can check for them by google IBM cplex user manual
+  // cplex.setParam(IloCplex::Param::Parallel, -1);
+  // cplex.setParam(IloCplex::Param::RootAlgorithm, 1);
+  // cplex.setParam(IloCplex::Param::MIP::Display, 3);
+  // cplex.setParam(IloCplex::Param::TimeLimit, 3600);  //time limit to 3600s
+  cplex.setParam(IloCplex::Param::Threads,
+                 1); // using one thread or core of CPU
+  cplex.solve();
+  cout << setprecision(12);
+  cout << "Solution status: " << cplex.getStatus() << endl;
+  cout << "Cplex Obj = " << cplex.getObjValue() << endl;
 
   return 0;
 }
