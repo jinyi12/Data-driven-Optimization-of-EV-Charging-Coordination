@@ -1,8 +1,5 @@
 #include <ilconcert/ilocsvreader.h>
 #include <ilcplex/ilocplex.h>
-#include <stdlib.h>
-#include <time.h>
-
 #include <cmath>
 #include <cstdio>
 #include <filesystem>
@@ -12,7 +9,6 @@
 #include <string>
 #include <vector>
 
-#include "Function.h"
 #include "ilconcert/iloenv.h"
 #include "ilconcert/iloexpression.h"
 #include "ilconcert/ilosys.h"
@@ -57,17 +53,18 @@ int main(int, char **) {
   IloNum fixedcost = 4000;
   IloInt nbStations = 300;
 
-  IloNum nbTime = 48;
+  IloInt nbTime = 48;
   IloNum timeInterval = 0.5;
 
-  IloNum Gamma = 10000;
+  IloNum Gamma = 1000;
   IloNum Epsilon = 0.0001;
 
   // maximum charging power of each EV, in kW, using level 2 charging
   IloNum maxChargingPower = 19;
 
-  IloNumVar rebaterate(env, 0, 1, ILOFLOAT);
-  IloNumVar rcharging(env, 0, IloInfinity, ILOFLOAT);
+  IloNum rebaterate = 0.8;
+  // IloNumVar rcharging(env, 0, IloInfinity, ILOFLOAT);
+  IloNum rcharging = 0.5;
 
   // Battery capacity for $i$th EV in kWh
   IloNumArray BatteryCapacity(env, nbStations);
@@ -140,15 +137,13 @@ int main(int, char **) {
 
   // initialize predicted time out and time in variables, for each charging
   // station
-  IloNumArray tHout(env, nbStations, 0, nbTime, ILOINT);
-  IloNumArray tHin(env, nbStations, 0, nbTime, ILOINT);
-  IloNumArray tPredictedOut(env, nbStations, 0, nbTime, ILOINT);
-  IloNumArray tPredictedIn(env, nbStations, 0, nbTime, ILOINT);
+  IloIntArray tHout(env, nbStations, 0, nbTime, ILOINT);
+  IloIntArray tHin(env, nbStations, 0, nbTime, ILOINT);
 
-  std::vector<double> tHout_vec(nbStations);
-  std::vector<double> tHin_vec(nbStations);
+  std::vector<double> tHout_vec (nbStations);
+  std::vector<double> tHin_vec (nbStations);
   std::vector<std::vector<double>> SOC_vec_2D(nbStations);
-  std::vector<double> SOC_vec(nbStations);
+  std::vector<double> SOC_vec (nbStations);
 
   // read arrival and departure .csv files located in the data folder and
   // initialize tHout and tHin, tPredicterIn and tPredictedOut
@@ -174,16 +169,19 @@ int main(int, char **) {
 
   int index = 0;
   while (arrival_it.ok()) {
-    tHin[index] = arrival_line.getFloatByPosition(0);
+    tHin[index] = round(arrival_line.getFloatByPosition(0));
     ++arrival_it;
+    index++;
   }
 
   // read departure distribution
   std::ifstream file(departure_path_char);
   std::string line;
+  index = 0;
   if (file.is_open()) {
     while (getline(file, line)) {
-      tHout_vec.push_back(std::stod(line));
+      tHout_vec[index] = std::stod(line);
+      index++;
     }
     file.close();
   } else {
@@ -205,8 +203,7 @@ int main(int, char **) {
   }
 
   for (int i = 0; i < nbStations; i++) {
-    tHout[i] = tHout_vec[i];
-    tHin[i] = tHin_vec[i];
+    tHout[i] = round(tHout_vec[i]);
   }
 
   // initialize ON/OFF for predicted charging status, for each scenario,
@@ -237,7 +234,8 @@ int main(int, char **) {
   // $s$th scenario, in kW
   NumVarMatrix2D DayAheadUtilityPowerOutput(env, nbScenarios);
   for (int s = 0; s < nbScenarios; s++) {
-    DayAheadUtilityPowerOutput[s] = IloNumVarArray(env, nbTime, 0, IloInfinity);
+    DayAheadUtilityPowerOutput[s] =
+        IloNumVarArray(env, nbTime, -IloInfinity, IloInfinity, ILOFLOAT);
   }
 
   // intialize day-ahead buy/sell (1/0) status at $t$th interval, under $s$th
@@ -246,10 +244,6 @@ int main(int, char **) {
   for (int s = 0; s < nbScenarios; s++) {
     DayAheadBuySellStatus[s] = IloNumVarArray(env, nbTime, 0, 1, ILOINT);
   }
-
-  // initialize electricity purchase price from the grid at $t$th time interval
-  // ($/kWh)
-  IloNumArray ElectricityPurchasePrice(env, nbTime);
 
   // ---------------------------------------------------------------------------
 
@@ -292,17 +286,18 @@ int main(int, char **) {
   // 1. Power balance
   // Total power output from solar and utility grid == Sum of EV charging load
 
+  ExprArray2D PowerBalance(env, nbScenarios);
   for (int s = 0; s < nbScenarios; s++) {
-    IloExpr expr(env);
+    PowerBalance[s] = IloExprArray(env, nbTime);
     for (int t = 0; t < nbTime; t++) {
-      expr += DayAheadSolarOutput[s][t];
-      expr += DayAheadUtilityPowerOutput[s][t];
+      PowerBalance[s][t] = IloExpr(env);
+      PowerBalance[s][t] += DayAheadSolarOutput[s][t];
+      PowerBalance[s][t] += DayAheadUtilityPowerOutput[s][t];
       for (int i = 0; i < nbStations; i++) {
-        expr -= DayAheadChargingPower[s][i][t];
+        PowerBalance[s][t] -= DayAheadChargingPower[s][i][t];
       }
+      model.add(PowerBalance[s][t] == 0);
     }
-    model.add(expr == 0);
-    expr.end();
   }
 
   // 2. Utility grid power output
@@ -320,15 +315,26 @@ int main(int, char **) {
   // for each scenario, for each EV, SOC + total increasing SoC (which is
   // day-ahead charging power/Battery capacity) of $i$th EV across the whole
   // charging period == 1
+
+  ExprArray2D ChargingPowerLimit1(env, nbScenarios);
+  for (int s = 0; s < nbScenarios; s++) {
+    ChargingPowerLimit1[s] = IloExprArray(env, nbStations);
+    for (int i = 0; i < nbStations; i++) {
+      ChargingPowerLimit1[s][i] = IloExpr(env);
+      int arrivaltime = tHin[i];
+      ChargingPowerLimit1[s][i] += SOC[s][i][arrivaltime];
+      for (int t = 0; t < nbTime; t++) {
+        ChargingPowerLimit1[s][i] += DayAheadChargingPower[s][i][t] / BatteryCapacity[i];
+      }
+      model.add(ChargingPowerLimit1[s][i] == 1);
+    }
+  }
+
+  // initial SOC
   for (int s = 0; s < nbScenarios; s++) {
     for (int i = 0; i < nbStations; i++) {
-      IloExpr expr(env);
-      expr += SOC[s][i][tHin[i]];
-      for (int t = 0; t < nbTime; t++) {
-        expr += DayAheadChargingPower[s][i][t] / BatteryCapacity[i];
-      }
-      model.add(expr == 1);
-      expr.end();
+      int arrivaltime = tHin[i];
+      model.add(SOC[s][i][arrivaltime] == SOC_vec[i]);
     }
   }
 
@@ -385,7 +391,7 @@ int main(int, char **) {
     for (int i = 0; i < nbStations; i++) {
       expr_tHatParking += (tHout[i] - tHin[i]);
       for (int t = 0; t < nbTime; t++) {
-        expr_tHatParking += -(rebaterate * timeInterval * prob[s] *
+        expr_tHatParking -= (rebaterate * timeInterval * prob[s] *
                               DayAheadOnOffChargingStatus[s][i][t]);
       }
     }
@@ -405,18 +411,16 @@ int main(int, char **) {
   IloExpr expr_RHatCharging(env);
   for (int s = 0; s < nbScenarios; s++) {
     for (int t = 0; t < nbTime; t++) {
-      IloExpr expr_RHatCharging_i(env);
       for (int i = 0; i < nbStations; i++) {
-        expr_RHatCharging_i +=
-            (rcharging * DayAheadChargingPower[s][i][t] * timeInterval -
-             DayAheadUtilityPowerOutput[s][t] * DayAheadBuySellStatus[s][t] *
-                 TOUPurchasePrice[t] * timeInterval -
-             DayAheadUtilityPowerOutput[s][t] *
-                 (1 - DayAheadBuySellStatus[s][t]) * TOUSellPrice[t] *
-                 timeInterval);
+        expr_RHatCharging +=
+            prob[s] *
+            (rcharging * (DayAheadChargingPower[s][i][t] * timeInterval) -
+             (DayAheadUtilityPowerOutput[s][t] * DayAheadBuySellStatus[s][t] *
+              TOUPurchasePrice[t] * timeInterval) -
+             (DayAheadUtilityPowerOutput[s][t] *
+              (1 - DayAheadBuySellStatus[s][t]) * TOUSellPrice[t] *
+              timeInterval));
       }
-      expr_RHatCharging += (prob[s] * expr_RHatCharging_i);
-      expr_RHatCharging_i.end();
     }
   }
 
@@ -430,8 +434,18 @@ int main(int, char **) {
   expr_RHatParking.end();
   expr_RHatCharging.end();
   expr_tHatParking.end();
+  PowerBalance.end();
+  ChargingPowerLimit1.end();
 
-  cplex.extract(model);
+
+  try {
+    cplex.extract(model);
+  } catch (IloException &e) {
+    std::cerr << "Concert exception caught: " << e << std::endl;
+  } catch (...) {
+    std::cerr << "Unknown exception caught" << std::endl;
+  }
+
   // CPLEX parameter setting :
   // cplex.setParam(IloCplex::Param::MIP::Tolerances::MIPGap, 0.01);  //
   // setting the optimal gap to be 0.01%
@@ -444,10 +458,25 @@ int main(int, char **) {
   // cplex.setParam(IloCplex::Param::TimeLimit, 3600);  //time limit to 3600s
   cplex.setParam(IloCplex::Param::Threads,
                  1); // using one thread or core of CPU
-  cplex.solve();
+  cplex.setParam(IloCplex::Param::MIP::Tolerances::MIPGap, 0.3);
+  // //  set optimality target 3
+  cplex.setParam(IloCplex::Param::OptimalityTarget, 3);
+
+  try {
+    cplex.solve();
+  } catch (IloException &e) {
+    cerr << "Concert exception caught: " << e << endl;
+  } catch (...) {
+    cerr << "Unknown exception caught" << endl;
+  }
+
   cout << setprecision(12);
   cout << "Solution status: " << cplex.getStatus() << endl;
   cout << "Cplex Obj = " << cplex.getObjValue() << endl;
+
+  IloNum rcharging_num = cplex.getValue(rcharging);
+
+  cout << "rcharging = " << rcharging_num << endl;
 
   return 0;
 }
