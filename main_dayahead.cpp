@@ -154,39 +154,23 @@ int main(int, char **) {
 
   std::cout << "Current path now is : " << current_path << std::endl;
 
-  const char *arrival_file = "Data/arrival_distribution.csv";
+  const char *arrival_file = "Data/arrival_departure_times.csv";
   std::filesystem::path arrival_path = current_path / arrival_file;
   const char *arrival_path_char = arrival_path.c_str();
 
-  const char *departure_file = "Data/departure_distribution.csv";
-  std::filesystem::path departure_path = current_path / departure_file;
-  const char *departure_path_char = departure_path.c_str();
+  // read arrival and departure times from .csv file
+  std::vector<std::vector<double>> arrival_departure_vec_2D =
+      read_csv(arrival_path_char);
+  
+  // first column is arrival time, second column is departure time
+  for (int i = 0; i < nbStations; i++) {
+    tHout_vec[i] = arrival_departure_vec_2D[i][0];
+    tHout[i] = round(tHout_vec[i]);
 
-  // read arrival distribution
-  IloCsvReader arrival_reader(env, arrival_path_char);
-  IloCsvReader::LineIterator arrival_it(arrival_reader);
-  IloCsvLine arrival_line = *arrival_it;
-
-  int index = 0;
-  while (arrival_it.ok()) {
-    tHin[index] = round(arrival_line.getFloatByPosition(0));
-    ++arrival_it;
-    index++;
+    tHin_vec[i] = arrival_departure_vec_2D[i][1];
+    tHin[i] = round(tHin_vec[i]);
   }
-
-  // read departure distribution
-  std::ifstream file(departure_path_char);
-  std::string line;
-  index = 0;
-  if (file.is_open()) {
-    while (getline(file, line)) {
-      tHout_vec[index] = std::stod(line);
-      index++;
-    }
-    file.close();
-  } else {
-    std::cout << "Unable to open file";
-  }
+  
 
   // read SOC distribution from .csv
   const char *SOC_file = "Data/SOC.csv";
@@ -332,7 +316,6 @@ int main(int, char **) {
   }
 
   // initial SOC
-  // initial SOC
   for (int s = 0; s < nbScenarios; s++) {
     for (int i = 0; i < nbStations; i++) {
       // int arrivaltime = tHin[i];
@@ -341,9 +324,18 @@ int main(int, char **) {
       model.add(SOC[s][i][tHin[i]] == SOC_vec[i]);
       model.add(SOC[s][i][0] == 0);
       for (int t = 1; t < nbTime; t++) {
-        model.add(SOC[s][i][t] ==
-                  SOC[s][i][t - 1] +
-                      (DayAheadChargingPower[s][i][t] / BatteryCapacity[i]));
+
+        // if t is between tHin and tHout, then SOC[t] = SOC[t-1] + charging
+        // power
+        if (t > tHin[i] && t <= tHout[i]) {
+          model.add(SOC[s][i][t] ==
+                    SOC[s][i][t - 1] + DayAheadChargingPower[s][i][t] *
+                                           timeInterval / BatteryCapacity[i]);
+        }
+        //        model.add(SOC[s][i][t] ==
+        //                  SOC[s][i][t - 1] +
+        //                      (DayAheadChargingPower[s][i][t] /
+        //                      BatteryCapacity[i]));
         // if t < tHin[i], then SOC = 0
         // if t > tHout[i], then SOC = 1
         if (t < tHin[i]) {
@@ -449,13 +441,17 @@ int main(int, char **) {
       for (int i = 0; i < nbStations; i++) {
         expr_RHatCharging +=
             prob[s] *
-            (rcharging * (DayAheadChargingPower[s][i][t] * timeInterval) -
-             (DayAheadUtilityPowerOutput[s][t] * TOUPurchasePrice[t] *
-              timeInterval));
+            (rcharging * DayAheadChargingPower[s][i][t] * timeInterval);
+        //  expr_RHatCharging += prob[s] * (2 * (DayAheadChargingPower[s][i][t]
+        //  * timeInterval) -(DayAheadUtilityPowerOutput[s][t] *
+        //  DayAheadBuySellStatus[s][t] * TOUPurchasePrice[t] * timeInterval) -
+        //  (DayAheadUtilityPowerOutput[s][t] * (1 -
+        //  DayAheadBuySellStatus[s][t]) * TOUSellPrice[t] * timeInterval));
       }
+      expr_RHatCharging -= prob[s] * (DayAheadUtilityPowerOutput[s][t] *
+                                      TOUPurchasePrice[t] * timeInterval);
     }
   }
-
   // define expression for \hat{R} = \hat{R}_{\text {charging }} +
   // \hat{R}_{\text {parking }} - C_{\text {operation }}
   IloExpr expr_RHat(env);

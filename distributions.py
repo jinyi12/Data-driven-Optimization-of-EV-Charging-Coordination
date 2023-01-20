@@ -78,13 +78,20 @@ if __name__ == "__main__":
     # create departure distribution by concatenating the two weibulls
     departure_distribution = np.concatenate((weibull_departure1, weibull_departure2))
 
+    # fit the distributions with density estimation
+    arrival_distribution = scipy.stats.gaussian_kde(arrival_distribution).resample(nStations)
+    departure_distribution = scipy.stats.gaussian_kde(departure_distribution).resample(nStations)
+    
+
+
+
     # plot arrival distribution
-    # plt.hist(arrival_distribution, bins=50)s
-    # plt.show()
+    plt.hist(arrival_distribution, bins=50)
+    plt.show()
 
     # plot departure distribution
-    # plt.hist(departure_distribution, bins=50)
-    # plt.show()
+    plt.hist(departure_distribution, bins=50)
+    plt.show()
 
     # save the distributions to .mat files
     scipy.io.savemat('Data/arrival_distribution.mat', mdict={'arrival_distribution': arrival_distribution})
