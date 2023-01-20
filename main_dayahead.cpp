@@ -1,9 +1,9 @@
-#include <ilconcert/ilocsvreader.h>
-#include <ilcplex/ilocplex.h>
 #include <cmath>
 #include <cstdio>
 #include <filesystem>
 #include <fstream>
+#include <ilconcert/ilocsvreader.h>
+#include <ilcplex/ilocplex.h>
 #include <iostream>
 #include <random>
 #include <string>
@@ -140,10 +140,10 @@ int main(int, char **) {
   IloIntArray tHout(env, nbStations, 0, nbTime, ILOINT);
   IloIntArray tHin(env, nbStations, 0, nbTime, ILOINT);
 
-  std::vector<double> tHout_vec (nbStations);
-  std::vector<double> tHin_vec (nbStations);
+  std::vector<double> tHout_vec(nbStations);
+  std::vector<double> tHin_vec(nbStations);
   std::vector<std::vector<double>> SOC_vec_2D(nbStations);
-  std::vector<double> SOC_vec (nbStations);
+  std::vector<double> SOC_vec(nbStations);
 
   // read arrival and departure .csv files located in the data folder and
   // initialize tHout and tHin, tPredicterIn and tPredictedOut
@@ -324,17 +324,35 @@ int main(int, char **) {
       int arrivaltime = tHin[i];
       ChargingPowerLimit1[s][i] += SOC[s][i][arrivaltime];
       for (int t = 0; t < nbTime; t++) {
-        ChargingPowerLimit1[s][i] += DayAheadChargingPower[s][i][t] * timeInterval / BatteryCapacity[i];
+        ChargingPowerLimit1[s][i] +=
+            DayAheadChargingPower[s][i][t] * timeInterval / BatteryCapacity[i];
       }
       model.add(ChargingPowerLimit1[s][i] == 1);
     }
   }
 
   // initial SOC
+  // initial SOC
   for (int s = 0; s < nbScenarios; s++) {
     for (int i = 0; i < nbStations; i++) {
-      int arrivaltime = tHin[i];
-      model.add(SOC[s][i][arrivaltime] == SOC_vec[i]);
+      // int arrivaltime = tHin[i];
+      //  model.add(SOC[s][i][23] == 1);
+      model.add(SOC[s][i][tHout[i]] == 1);
+      model.add(SOC[s][i][tHin[i]] == SOC_vec[i]);
+      model.add(SOC[s][i][0] == 0);
+      for (int t = 1; t < nbTime; t++) {
+        model.add(SOC[s][i][t] ==
+                  SOC[s][i][t - 1] +
+                      (DayAheadChargingPower[s][i][t] / BatteryCapacity[i]));
+        // if t < tHin[i], then SOC = 0
+        // if t > tHout[i], then SOC = 1
+        if (t < tHin[i]) {
+          model.add(SOC[s][i][t] == 0);
+        }
+        if (t > tHout[i]) {
+          model.add(SOC[s][i][t] == 1);
+        }
+      }
     }
   }
 
@@ -392,7 +410,7 @@ int main(int, char **) {
       expr_tHatParking += (tHout[i] - tHin[i]);
       for (int t = 0; t < nbTime; t++) {
         expr_tHatParking -= (rebaterate * timeInterval * prob[s] *
-                              DayAheadOnOffChargingStatus[s][i][t]);
+                             DayAheadOnOffChargingStatus[s][i][t]);
       }
     }
   }
@@ -415,7 +433,8 @@ int main(int, char **) {
   //       expr_RHatCharging +=
   //           prob[s] *
   //           (rcharging * (DayAheadChargingPower[s][i][t] * timeInterval) -
-  //            (DayAheadUtilityPowerOutput[s][t] * DayAheadBuySellStatus[s][t] *
+  //            (DayAheadUtilityPowerOutput[s][t] * DayAheadBuySellStatus[s][t]
+  //            *
   //             TOUPurchasePrice[t] * timeInterval) -
   //            (DayAheadUtilityPowerOutput[s][t] *
   //             (1 - DayAheadBuySellStatus[s][t]) * TOUSellPrice[t] *
@@ -431,8 +450,7 @@ int main(int, char **) {
         expr_RHatCharging +=
             prob[s] *
             (rcharging * (DayAheadChargingPower[s][i][t] * timeInterval) -
-             (DayAheadUtilityPowerOutput[s][t] *
-              TOUPurchasePrice[t] *
+             (DayAheadUtilityPowerOutput[s][t] * TOUPurchasePrice[t] *
               timeInterval));
       }
     }
@@ -450,7 +468,6 @@ int main(int, char **) {
   expr_tHatParking.end();
   PowerBalance.end();
   ChargingPowerLimit1.end();
-
 
   try {
     cplex.extract(model);
@@ -487,19 +504,21 @@ int main(int, char **) {
   cout << setprecision(12);
   cout << "Solution status: " << cplex.getStatus() << endl;
   cout << "Cplex Obj = " << cplex.getObjValue() << endl;
-  
+
   // output the optimal solution
   ofstream myfile;
   myfile.open("output.csv");
   myfile << "Scenario,Time,DayAheadBuySellStatus,DayAheadOnOffChargingStatus,"
-            "DayAheadChargingPower,DayAheadUtilityPowerOutput" << endl;
+            "DayAheadChargingPower,DayAheadUtilityPowerOutput"
+         << endl;
   for (int s = 0; s < nbScenarios; s++) {
     for (int t = 0; t < nbTime; t++) {
-      myfile << s << "," << t << "," << cplex.getValue(DayAheadBuySellStatus[s][t]) << ","
+      myfile << s << "," << t << ","
+             << cplex.getValue(DayAheadBuySellStatus[s][t]) << ","
              << cplex.getValue(DayAheadOnOffChargingStatus[s][0][t]) << ","
              << cplex.getValue(DayAheadChargingPower[s][0][t]) << ","
-             << cplex.getValue(DayAheadUtilityPowerOutput[s][t])  << endl;
-            // << cplex.getValue(SOC[s][0][t]) << endl;
+             << cplex.getValue(DayAheadUtilityPowerOutput[s][t]) << endl;
+      // << cplex.getValue(SOC[s][0][t]) << endl;
     }
   }
 
