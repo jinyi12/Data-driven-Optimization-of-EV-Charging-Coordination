@@ -56,15 +56,15 @@ int main(int, char **) {
   IloInt nbTime = 48;
   IloNum timeInterval = 0.5;
 
-  IloNum Gamma = 1000;
+  IloNum Gamma = 10000;
   IloNum Epsilon = 0.0001;
 
   // maximum charging power of each EV, in kW, using level 2 charging
   IloNum maxChargingPower = 19;
 
-  IloNum rebaterate = 0.8;
+  IloNum rebaterate = 0.4;
   // IloNumVar rcharging(env, 0, IloInfinity, ILOFLOAT);
-  IloNum rcharging = 0.5;
+  IloNum rcharging = 2;
 
   // Battery capacity for $i$th EV in kWh
   IloNumArray BatteryCapacity(env, nbStations);
@@ -324,7 +324,7 @@ int main(int, char **) {
       int arrivaltime = tHin[i];
       ChargingPowerLimit1[s][i] += SOC[s][i][arrivaltime];
       for (int t = 0; t < nbTime; t++) {
-        ChargingPowerLimit1[s][i] += DayAheadChargingPower[s][i][t] / BatteryCapacity[i];
+        ChargingPowerLimit1[s][i] += DayAheadChargingPower[s][i][t] * timeInterval / BatteryCapacity[i];
       }
       model.add(ChargingPowerLimit1[s][i] == 1);
     }
@@ -408,6 +408,22 @@ int main(int, char **) {
   // \hat{P}_{s, i}(t) \Delta t -\hat{P}_{\text {grid }, s}(t) \hat{y}_s(t)
   // c(t) \Delta t - \hat{P}_{\text {grid }, s} (1-\hat{y}_s(t)) h(t) \Delta t
 
+  // IloExpr expr_RHatCharging(env);
+  // for (int s = 0; s < nbScenarios; s++) {
+  //   for (int t = 0; t < nbTime; t++) {
+  //     for (int i = 0; i < nbStations; i++) {
+  //       expr_RHatCharging +=
+  //           prob[s] *
+  //           (rcharging * (DayAheadChargingPower[s][i][t] * timeInterval) -
+  //            (DayAheadUtilityPowerOutput[s][t] * DayAheadBuySellStatus[s][t] *
+  //             TOUPurchasePrice[t] * timeInterval) -
+  //            (DayAheadUtilityPowerOutput[s][t] *
+  //             (1 - DayAheadBuySellStatus[s][t]) * TOUSellPrice[t] *
+  //             timeInterval));
+  //     }
+  //   }
+  // }
+
   IloExpr expr_RHatCharging(env);
   for (int s = 0; s < nbScenarios; s++) {
     for (int t = 0; t < nbTime; t++) {
@@ -415,10 +431,8 @@ int main(int, char **) {
         expr_RHatCharging +=
             prob[s] *
             (rcharging * (DayAheadChargingPower[s][i][t] * timeInterval) -
-             (DayAheadUtilityPowerOutput[s][t] * DayAheadBuySellStatus[s][t] *
-              TOUPurchasePrice[t] * timeInterval) -
              (DayAheadUtilityPowerOutput[s][t] *
-              (1 - DayAheadBuySellStatus[s][t]) * TOUSellPrice[t] *
+              TOUPurchasePrice[t] *
               timeInterval));
       }
     }
@@ -460,7 +474,7 @@ int main(int, char **) {
                  1); // using one thread or core of CPU
   cplex.setParam(IloCplex::Param::MIP::Tolerances::MIPGap, 0.3);
   // //  set optimality target 3
-  cplex.setParam(IloCplex::Param::OptimalityTarget, 3);
+  // cplex.setParam(IloCplex::Param::OptimalityTarget, 3);
 
   try {
     cplex.solve();
@@ -473,10 +487,21 @@ int main(int, char **) {
   cout << setprecision(12);
   cout << "Solution status: " << cplex.getStatus() << endl;
   cout << "Cplex Obj = " << cplex.getObjValue() << endl;
-
-  IloNum rcharging_num = cplex.getValue(rcharging);
-
-  cout << "rcharging = " << rcharging_num << endl;
+  
+  // output the optimal solution
+  ofstream myfile;
+  myfile.open("output.csv");
+  myfile << "Scenario,Time,DayAheadBuySellStatus,DayAheadOnOffChargingStatus,"
+            "DayAheadChargingPower,DayAheadUtilityPowerOutput" << endl;
+  for (int s = 0; s < nbScenarios; s++) {
+    for (int t = 0; t < nbTime; t++) {
+      myfile << s << "," << t << "," << cplex.getValue(DayAheadBuySellStatus[s][t]) << ","
+             << cplex.getValue(DayAheadOnOffChargingStatus[s][0][t]) << ","
+             << cplex.getValue(DayAheadChargingPower[s][0][t]) << ","
+             << cplex.getValue(DayAheadUtilityPowerOutput[s][t])  << endl;
+            // << cplex.getValue(SOC[s][0][t]) << endl;
+    }
+  }
 
   return 0;
 }
