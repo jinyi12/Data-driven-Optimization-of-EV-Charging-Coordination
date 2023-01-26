@@ -3,3 +3,5 @@
 /build
 /.ipynb_checkpoints
 /.cache
+/.clang-format
+/.DS_Store

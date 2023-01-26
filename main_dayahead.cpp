@@ -22,7 +22,8 @@ typedef IloArray<NumMatrix2D> NumMatrix3D;
 typedef IloArray<IloExprArray> ExprArray2D;
 
 // function to read csv file into a std::vector
-std::vector<std::vector<double>> read_csv(const std::string &filename);
+std::vector<std::vector<double>> read_csv(const std::string &filename,
+                                          bool header);
 
 int main(int, char **) {
   printf("Hello World!");
@@ -34,8 +35,6 @@ int main(int, char **) {
   double mean_out = 16;
   double std_out = 1;
 
-  std::normal_distribution<double> norm_dist_in(mean_in, std_in);
-  std::normal_distribution<double> norm_dist_out(mean_out, std_out);
   std::normal_distribution<double> norm_dist_SOC(0.6, 0.1);
 
   int nbScenarios = 10;
@@ -48,7 +47,6 @@ int main(int, char **) {
   // fixed daily operational cost is equal to $4000 per 24 h. The number of
   // charging stations in this EV parking deck is assumed to be 300.
 
-  IloNum SOC_max = 1.0;
   IloNum rparking = 1.5;
   IloNum fixedcost = 4000;
   IloInt nbStations = 300;
@@ -56,15 +54,15 @@ int main(int, char **) {
   IloInt nbTime = 48;
   IloNum timeInterval = 0.5;
 
-  IloNum Gamma = 10000;
-  IloNum Epsilon = 0.0001;
+  IloNum Gamma = 100000;
+  IloNum Epsilon = 0.00001;
 
   // maximum charging power of each EV, in kW, using level 2 charging
   IloNum maxChargingPower = 19;
 
-  IloNum rebaterate = 0.4;
+  IloNum rebaterate = 0.6;
   // IloNumVar rcharging(env, 0, IloInfinity, ILOFLOAT);
-  IloNum rcharging = 2;
+  IloNum rcharging = 1.5;
 
   // Battery capacity for $i$th EV in kWh
   IloNumArray BatteryCapacity(env, nbStations);
@@ -160,34 +158,29 @@ int main(int, char **) {
 
   // read arrival and departure times from .csv file
   std::vector<std::vector<double>> arrival_departure_vec_2D =
-      read_csv(arrival_path_char);
-  
+      read_csv(arrival_path_char, true);
+
   // first column is arrival time, second column is departure time
   for (int i = 0; i < nbStations; i++) {
-    tHout_vec[i] = arrival_departure_vec_2D[i][0];
-    tHout[i] = round(tHout_vec[i]);
+    tHout_vec[i] = arrival_departure_vec_2D[i][1];
+    tHout[i] = round(tHout_vec[i] / timeInterval);
 
-    tHin_vec[i] = arrival_departure_vec_2D[i][1];
-    tHin[i] = round(tHin_vec[i]);
+    tHin_vec[i] = arrival_departure_vec_2D[i][0];
+    tHin[i] = round(tHin_vec[i] / timeInterval);
   }
-  
 
   // read SOC distribution from .csv
   const char *SOC_file = "Data/SOC.csv";
   std::filesystem::path SOC_path = current_path / SOC_file;
   const char *SOC_path_char = SOC_path.c_str();
 
-  SOC_vec_2D = read_csv(SOC_path_char);
+  SOC_vec_2D = read_csv(SOC_path_char, false);
   // if each vector entry is of size 1, then it is a 1D vector, convert it to a
   // 1D vec
   if (SOC_vec_2D[0].size() == 1) {
     for (int i = 0; i < SOC_vec_2D.size(); i++) {
       SOC_vec[i] = SOC_vec_2D[i][0];
     }
-  }
-
-  for (int i = 0; i < nbStations; i++) {
-    tHout[i] = round(tHout_vec[i]);
   }
 
   // initialize ON/OFF for predicted charging status, for each scenario,
@@ -244,7 +237,7 @@ int main(int, char **) {
   const char *solar_path_char = solar_path.c_str();
 
   std::vector<std::vector<double>> solar_scenarios_2D =
-      read_csv(solar_path_char);
+      read_csv(solar_path_char, false);
   NumMatrix2D DayAheadSolarOutput(env, nbScenarios);
   for (int s = 0; s < nbScenarios; s++) {
     DayAheadSolarOutput[s] = IloNumArray(env, nbTime, 0, IloInfinity);
@@ -300,75 +293,70 @@ int main(int, char **) {
   // day-ahead charging power/Battery capacity) of $i$th EV across the whole
   // charging period == 1
 
-  ExprArray2D ChargingPowerLimit1(env, nbScenarios);
-  for (int s = 0; s < nbScenarios; s++) {
-    ChargingPowerLimit1[s] = IloExprArray(env, nbStations);
-    for (int i = 0; i < nbStations; i++) {
-      ChargingPowerLimit1[s][i] = IloExpr(env);
-      int arrivaltime = tHin[i];
-      ChargingPowerLimit1[s][i] += SOC[s][i][arrivaltime];
-      for (int t = 0; t < nbTime; t++) {
-        ChargingPowerLimit1[s][i] +=
-            DayAheadChargingPower[s][i][t] * timeInterval / BatteryCapacity[i];
-      }
-      model.add(ChargingPowerLimit1[s][i] == 1);
-    }
-  }
+  //  ExprArray2D ChargingPowerLimit1(env, nbScenarios);
+  //  for (int s = 0; s < nbScenarios; s++) {
+  //    ChargingPowerLimit1[s] = IloExprArray(env, nbStations);
+  //    for (int i = 0; i < nbStations; i++) {
+  //      ChargingPowerLimit1[s][i] = IloExpr(env);
+  //      int arrivaltime = tHin[i];
+  //      ChargingPowerLimit1[s][i] += SOC[s][i][arrivaltime];
+  //      for (int t = arrivaltime; t <= tHout[i]; t++) {
+  //        ChargingPowerLimit1[s][i] +=
+  //            DayAheadChargingPower[s][i][t] * timeInterval /
+  //            BatteryCapacity[i];
+  //      }
+  //      model.add(ChargingPowerLimit1[s][i] == 1);
+  //    }
+  //  }
 
   // initial SOC
   for (int s = 0; s < nbScenarios; s++) {
     for (int i = 0; i < nbStations; i++) {
-      // int arrivaltime = tHin[i];
-      //  model.add(SOC[s][i][23] == 1);
-      model.add(SOC[s][i][tHout[i]] == 1);
-      model.add(SOC[s][i][tHin[i]] == SOC_vec[i]);
-      model.add(SOC[s][i][0] == 0);
-      for (int t = 1; t < nbTime; t++) {
 
-        // if t is between tHin and tHout, then SOC[t] = SOC[t-1] + charging
-        // power
+      for (int t = 0; t < nbTime; t++) {
+        if (t <= tHin[i]) {
+          model.add(SOC[s][i][t] == SOC_vec[i]);
+        }
+        //        else if (t > tHout[i]) {
+        //          model.add(SOC[s][i][t] == SOC[s][i][tHout[i]]);
+        //        }
         if (t > tHin[i] && t <= tHout[i]) {
           model.add(SOC[s][i][t] ==
-                    SOC[s][i][t - 1] + DayAheadChargingPower[s][i][t] *
-                                           timeInterval / BatteryCapacity[i]);
+                    SOC[s][i][t - 1] + (DayAheadChargingPower[s][i][t] *
+                                        timeInterval / BatteryCapacity[i]));
         }
-        //        model.add(SOC[s][i][t] ==
-        //                  SOC[s][i][t - 1] +
-        //                      (DayAheadChargingPower[s][i][t] /
-        //                      BatteryCapacity[i]));
-        // if t < tHin[i], then SOC = 0
-        // if t > tHout[i], then SOC = 1
-        if (t < tHin[i]) {
-          model.add(SOC[s][i][t] == 0);
-        }
+
         if (t > tHout[i]) {
-          model.add(SOC[s][i][t] == 1);
+          model.add(SOC[s][i][t] == SOC[s][i][tHout[i]]);
         }
       }
+
+      IloExpr expr(env);
+      expr += SOC[s][i][tHin[i]];
+
+      for (int t = 0; t < nbTime; t++) {
+        expr +=
+            DayAheadChargingPower[s][i][t] * timeInterval / BatteryCapacity[i];
+      }
+
+      model.add(expr == 1);
+      expr.end();
     }
   }
 
   // 4. Charging power limit (part 2)
   // Second and third constraint ensures that the charging power for every
-  // scenario lies between the range $(0, P_{\text{level}}]$ when $\hat{u}_{s,
-  // i}(t) == 1$. $\hat{P}_{s, i}(t) == 0 $ if $\hat{u}_{s, i}(t) == 0$.
+  // scenario lies between the range $(0, P_{\text{level}}]$ when
+  // $\hat{u}_{s, i}(t) == 1$. $\hat{P}_{s, i}(t) == 0 $ if $\hat{u}_{s,
+  // i}(t) == 0$.
 
   for (int s = 0; s < nbScenarios; s++) {
     for (int i = 0; i < nbStations; i++) {
       for (int t = 0; t < nbTime; t++) {
-        model.add(DayAheadChargingPower[s][i][t] <=
-                  DayAheadOnOffChargingStatus[s][i][t] * maxChargingPower);
-        model.add(DayAheadChargingPower[s][i][t] >= 0);
-      }
-    }
-  }
+        if (t < tHin[i] || t > tHout[i]) {
+          model.add(DayAheadOnOffChargingStatus[s][i][t] == 0);
+        }
 
-  // 5. Charging power limit (part 3)
-  // \varepsilon \hat{u}_{s, i}(t) & \leq \hat{P}_{s, i}(t) & \leq P_{\text
-  // {level }} \hat{u}_{s, i}(t) & \forall s, \forall i, \forall t
-  for (int s = 0; s < nbScenarios; s++) {
-    for (int i = 0; i < nbStations; i++) {
-      for (int t = 0; t < nbTime; t++) {
         model.add(DayAheadChargingPower[s][i][t] <=
                   DayAheadOnOffChargingStatus[s][i][t] * maxChargingPower);
         model.add(DayAheadChargingPower[s][i][t] >=
@@ -376,6 +364,20 @@ int main(int, char **) {
       }
     }
   }
+
+  // 5. Charging power limit (part 3)
+  // \varepsilon \hat{u}_{s, i}(t) & \leq \hat{P}_{s, i}(t) & \leq P_{\text
+  // {level }} \hat{u}_{s, i}(t) & \forall s, \forall i, \forall t
+  //  for (int s = 0; s < nbScenarios; s++) {
+  //    for (int i = 0; i < nbStations; i++) {
+  //      for (int t = 0; t < nbTime; t++) {
+  //        model.add(DayAheadChargingPower[s][i][t] <=
+  //                  DayAheadOnOffChargingStatus[s][i][t] * maxChargingPower);
+  //        model.add(DayAheadChargingPower[s][i][t] >=
+  //                  Epsilon * DayAheadOnOffChargingStatus[s][i][t]);
+  //      }
+  //    }
+  //  }
 
   // ---------------------------------------------------------------------------
 
@@ -393,9 +395,10 @@ int main(int, char **) {
   // \end{aligned}
 
   // The sum of the differences between the time of EV exit
-  // ($\hat{T}_{\text{out}, i}$) and the time of EV entry ($\hat{T}_{\text{in},
-  // i}$) for all $i$ from 1 to $N$, and then subtract parking fee rebate rate *
-  // time interval * prob[s] * DayAheadOnOffChargingStatus .
+  // ($\hat{T}_{\text{out}, i}$) and the time of EV entry
+  // ($\hat{T}_{\text{in}, i}$) for all $i$ from 1 to $N$, and then subtract
+  // parking fee rebate rate * time interval * prob[s] *
+  // DayAheadOnOffChargingStatus .
   IloExpr expr_tHatParking(env);
   for (int s = 0; s < nbScenarios; s++) {
     for (int i = 0; i < nbStations; i++) {
@@ -414,9 +417,10 @@ int main(int, char **) {
 
   // define expression for expected day-ahead charging revenue
   // \hat{R}_{\text {charging }}=\sum_{s=1}^S
-  // \operatorname{prob}_s \sum_{t=1}^T[ & r_{\text {charging }} \sum_{i=1}^N
-  // \hat{P}_{s, i}(t) \Delta t -\hat{P}_{\text {grid }, s}(t) \hat{y}_s(t)
-  // c(t) \Delta t - \hat{P}_{\text {grid }, s} (1-\hat{y}_s(t)) h(t) \Delta t
+  // \operatorname{prob}_s \sum_{t=1}^T[ & r_{\text {charging }}
+  // \sum_{i=1}^N \hat{P}_{s, i}(t) \Delta t -\hat{P}_{\text {grid }, s}(t)
+  // \hat{y}_s(t) c(t) \Delta t - \hat{P}_{\text {grid }, s}
+  // (1-\hat{y}_s(t)) h(t) \Delta t
 
   // IloExpr expr_RHatCharging(env);
   // for (int s = 0; s < nbScenarios; s++) {
@@ -424,8 +428,10 @@ int main(int, char **) {
   //     for (int i = 0; i < nbStations; i++) {
   //       expr_RHatCharging +=
   //           prob[s] *
-  //           (rcharging * (DayAheadChargingPower[s][i][t] * timeInterval) -
-  //            (DayAheadUtilityPowerOutput[s][t] * DayAheadBuySellStatus[s][t]
+  //           (rcharging * (DayAheadChargingPower[s][i][t] * timeInterval)
+  //           -
+  //            (DayAheadUtilityPowerOutput[s][t] *
+  //            DayAheadBuySellStatus[s][t]
   //            *
   //             TOUPurchasePrice[t] * timeInterval) -
   //            (DayAheadUtilityPowerOutput[s][t] *
@@ -441,15 +447,21 @@ int main(int, char **) {
       for (int i = 0; i < nbStations; i++) {
         expr_RHatCharging +=
             prob[s] *
-            (rcharging * DayAheadChargingPower[s][i][t] * timeInterval);
-        //  expr_RHatCharging += prob[s] * (2 * (DayAheadChargingPower[s][i][t]
+            (rcharging * DayAheadChargingPower[s][i][t] * DayAheadOnOffChargingStatus[s][i][t] * timeInterval);
+        //  expr_RHatCharging += prob[s] * (2 *
+        //  (DayAheadChargingPower[s][i][t]
         //  * timeInterval) -(DayAheadUtilityPowerOutput[s][t] *
-        //  DayAheadBuySellStatus[s][t] * TOUPurchasePrice[t] * timeInterval) -
-        //  (DayAheadUtilityPowerOutput[s][t] * (1 -
-        //  DayAheadBuySellStatus[s][t]) * TOUSellPrice[t] * timeInterval));
+        //  DayAheadBuySellStatus[s][t] * TOUPurchasePrice[t] *
+        //  timeInterval) - (DayAheadUtilityPowerOutput[s][t] * (1 -
+        //  DayAheadBuySellStatus[s][t]) * TOUSellPrice[t] *
+        //  timeInterval));
       }
       expr_RHatCharging -= prob[s] * (DayAheadUtilityPowerOutput[s][t] *
+                                      DayAheadBuySellStatus[s][t] *
                                       TOUPurchasePrice[t] * timeInterval);
+      expr_RHatCharging -= prob[s] * (DayAheadUtilityPowerOutput[s][t] *
+                                      (1 - DayAheadBuySellStatus[s][t]) *
+                                      TOUSellPrice[t] * timeInterval);
     }
   }
   // define expression for \hat{R} = \hat{R}_{\text {charging }} +
@@ -463,7 +475,7 @@ int main(int, char **) {
   expr_RHatCharging.end();
   expr_tHatParking.end();
   PowerBalance.end();
-  ChargingPowerLimit1.end();
+  //  ChargingPowerLimit1.end();
 
   try {
     cplex.extract(model);
@@ -482,7 +494,8 @@ int main(int, char **) {
   // cplex.setParam(IloCplex::Param::Parallel, -1);
   // cplex.setParam(IloCplex::Param::RootAlgorithm, 1);
   // cplex.setParam(IloCplex::Param::MIP::Display, 3);
-  // cplex.setParam(IloCplex::Param::TimeLimit, 3600);  //time limit to 3600s
+  // cplex.setParam(IloCplex::Param::TimeLimit, 3600);  //time limit to
+  // 3600s
   cplex.setParam(IloCplex::Param::Threads,
                  1); // using one thread or core of CPU
   cplex.setParam(IloCplex::Param::MIP::Tolerances::MIPGap, 0.3);
@@ -503,36 +516,58 @@ int main(int, char **) {
 
   // output the optimal solution
   ofstream myfile;
-  myfile.open("output.csv");
-  myfile << "Scenario,Time,DayAheadBuySellStatus,DayAheadOnOffChargingStatus,"
-            "DayAheadChargingPower,DayAheadUtilityPowerOutput"
-         << endl;
-  for (int s = 0; s < nbScenarios; s++) {
-    for (int t = 0; t < nbTime; t++) {
-      myfile << s << "," << t << ","
-             << cplex.getValue(DayAheadBuySellStatus[s][t]) << ","
-             << cplex.getValue(DayAheadOnOffChargingStatus[s][0][t]) << ","
-             << cplex.getValue(DayAheadChargingPower[s][0][t]) << ","
-             << cplex.getValue(DayAheadUtilityPowerOutput[s][t]) << endl;
-      // << cplex.getValue(SOC[s][0][t]) << endl;
+  myfile.open(current_path / "output.csv");
+  myfile
+      << "Time,tHin_i,tHout_i,i,DayAheadBuySellStatus,DayAheadOnOffChargingStatus,"
+         "DayAheadChargingPower,DayAheadUtilityPowerOutput,SOC"
+      << endl;
+  for (int t = 0; t < nbTime; t++) {
+    for (int i = 0; i < nbStations; i++) {
+      myfile << t << "," << tHin[i] << "," << tHout[i] << "," << i << ","
+             << cplex.getValue(DayAheadBuySellStatus[0][t]) << ","
+             << cplex.getValue(DayAheadOnOffChargingStatus[0][i][t]) << ","
+             << cplex.getValue(DayAheadChargingPower[0][i][t]) << ","
+             << cplex.getValue(DayAheadUtilityPowerOutput[0][t]) << ","
+             << cplex.getValue(SOC[0][i][t]) << endl;
     }
   }
 
   return 0;
 }
 
-std::vector<std::vector<double>> read_csv(const std::string &filename) {
+std::vector<std::vector<double>> read_csv(const std::string &filename,
+                                          bool header = false) {
   std::vector<std::vector<double>> data;
   std::ifstream file(filename);
   std::string line;
-  while (std::getline(file, line)) {
-    std::stringstream lineStream(line);
-    std::string cell;
-    std::vector<double> row;
-    while (std::getline(lineStream, cell, ',')) {
-      row.push_back(std::stod(cell));
+
+  if (header) {
+
+    file.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+    // skip the first line
+
+    while (std::getline(file, line)) {
+      std::stringstream lineStream(line);
+      std::string cell;
+      std::vector<double> row;
+
+      while (std::getline(lineStream, cell, ',')) {
+        row.push_back(std::stod(cell));
+      }
+      data.push_back(row);
     }
-    data.push_back(row);
+
+  } else {
+    while (std::getline(file, line)) {
+      std::stringstream lineStream(line);
+      std::string cell;
+      std::vector<double> row;
+
+      while (std::getline(lineStream, cell, ',')) {
+        row.push_back(std::stod(cell));
+      }
+      data.push_back(row);
+    }
   }
   return data;
 }
