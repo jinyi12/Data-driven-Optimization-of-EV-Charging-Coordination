@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <cmath>
 #include <cstdio>
 #include <filesystem>
@@ -20,6 +21,7 @@ typedef IloArray<NumVarMatrix2D> NumVarMatrix3D;
 typedef IloArray<IloNumArray> NumMatrix2D;
 typedef IloArray<NumMatrix2D> NumMatrix3D;
 typedef IloArray<IloExprArray> ExprArray2D;
+typedef IloArray<ExprArray2D> ExprArray3D;
 
 // function to read csv file into a std::vector
 std::vector<std::vector<double>> read_csv(const std::string &filename,
@@ -365,6 +367,55 @@ int main(int, char **) {
     }
   }
 
+  // Linearize DayAheadChargingPower * DayAheadOnOffChargingStatus
+  NumVarMatrix3D DayAheadChargingPowerLinearized(env, nbScenarios);
+  for (int s = 0; s < nbScenarios; s++) {
+    DayAheadChargingPowerLinearized[s] = NumVarMatrix2D(env, nbStations);
+    for (int i = 0; i < nbStations; i++) {
+      DayAheadChargingPowerLinearized[s][i] =
+          IloNumVarArray(env, nbTime, 0, IloInfinity, ILOFLOAT);
+      for (int t = 0; t < nbTime; t++) {
+        model.add(DayAheadChargingPowerLinearized[s][i][t] <=
+                  maxChargingPower * DayAheadOnOffChargingStatus[s][i][t]);
+        model.add(DayAheadChargingPowerLinearized[s][i][t] <=
+                  DayAheadChargingPower[s][i][t]);
+        model.add(DayAheadChargingPowerLinearized[s][i][t] >= 0);
+        model.add(DayAheadChargingPowerLinearized[s][i][t] >=
+                  DayAheadChargingPower[s][i][t] -
+                      (1 - DayAheadOnOffChargingStatus[s][i][t]) *
+                          maxChargingPower);
+      }
+    }
+  }
+
+  // Linearize DayAheadUtilityPowerOutput * DayAheadBuySellStatus
+  NumVarMatrix2D DayAheadUtilityPowerOutputLinearizedPurchase(env, nbScenarios);
+  for (int s = 0; s < nbScenarios; s++) {
+    DayAheadUtilityPowerOutputLinearizedPurchase[s] =
+        IloNumVarArray(env, nbTime, -IloInfinity, IloInfinity, ILOFLOAT);
+    for (int t = 0; t < nbTime; t++) {
+
+      model.add(DayAheadUtilityPowerOutputLinearizedPurchase[s][t] <=
+                Gamma * DayAheadBuySellStatus[s][t]);
+      model.add(DayAheadUtilityPowerOutputLinearizedPurchase[s][t] >=
+                -Gamma * DayAheadBuySellStatus[s][t]);
+
+      model.add(DayAheadUtilityPowerOutputLinearizedPurchase[s][t] <= Gamma);
+      model.add(DayAheadUtilityPowerOutputLinearizedPurchase[s][t] >= -Gamma);
+
+      model.add(DayAheadUtilityPowerOutputLinearizedPurchase[s][t] >=
+                DayAheadUtilityPowerOutput[s][t] -
+                    (1 - DayAheadBuySellStatus[s][t]) * Gamma);
+      model.add(DayAheadUtilityPowerOutputLinearizedPurchase[s][t] <=
+                DayAheadUtilityPowerOutput[s][t] -
+                    (1 - DayAheadBuySellStatus[s][t]) * -Gamma);
+
+      model.add(DayAheadUtilityPowerOutputLinearizedPurchase[s][t] <=
+                DayAheadUtilityPowerOutput[s][t] +
+                    (1 - DayAheadBuySellStatus[s][t]) * Gamma);
+    }
+  }
+
   // 5. Charging power limit (part 3)
   // \varepsilon \hat{u}_{s, i}(t) & \leq \hat{P}_{s, i}(t) & \leq P_{\text
   // {level }} \hat{u}_{s, i}(t) & \forall s, \forall i, \forall t
@@ -384,15 +435,6 @@ int main(int, char **) {
   // ---------------------------------------------------------------------------
   // *************** 4. objective function ***************
   // ---------------------------------------------------------------------------
-
-  // define expression for \begin{aligned}
-  // & \sum_{i=1}^N \hat{t}_{\text {parking },
-  // i}=\sum_{i=1}^N\left[\hat{T}_{\text {out }, i}-\hat{T}_{\mathrm{in},
-  // i}\right] \\
-// & -\rho \Delta t \sum_{s=1}^S \operatorname{prob}_s \sum_{i=1}^N
-  // \sum_{t=1}^T \hat{u}_{s, i}(t) \\
-// &
-  // \end{aligned}
 
   // The sum of the differences between the time of EV exit
   // ($\hat{T}_{\text{out}, i}$) and the time of EV entry
@@ -415,53 +457,29 @@ int main(int, char **) {
   IloExpr expr_RHatParking(env);
   expr_RHatParking = rparking * expr_tHatParking;
 
-  // define expression for expected day-ahead charging revenue
-  // \hat{R}_{\text {charging }}=\sum_{s=1}^S
-  // \operatorname{prob}_s \sum_{t=1}^T[ & r_{\text {charging }}
-  // \sum_{i=1}^N \hat{P}_{s, i}(t) \Delta t -\hat{P}_{\text {grid }, s}(t)
-  // \hat{y}_s(t) c(t) \Delta t - \hat{P}_{\text {grid }, s}
-  // (1-\hat{y}_s(t)) h(t) \Delta t
-
-  // IloExpr expr_RHatCharging(env);
-  // for (int s = 0; s < nbScenarios; s++) {
-  //   for (int t = 0; t < nbTime; t++) {
-  //     for (int i = 0; i < nbStations; i++) {
-  //       expr_RHatCharging +=
-  //           prob[s] *
-  //           (rcharging * (DayAheadChargingPower[s][i][t] * timeInterval)
-  //           -
-  //            (DayAheadUtilityPowerOutput[s][t] *
-  //            DayAheadBuySellStatus[s][t]
-  //            *
-  //             TOUPurchasePrice[t] * timeInterval) -
-  //            (DayAheadUtilityPowerOutput[s][t] *
-  //             (1 - DayAheadBuySellStatus[s][t]) * TOUSellPrice[t] *
-  //             timeInterval));
-  //     }
-  //   }
-  // }
-
   IloExpr expr_RHatCharging(env);
   for (int s = 0; s < nbScenarios; s++) {
     for (int t = 0; t < nbTime; t++) {
       for (int i = 0; i < nbStations; i++) {
         expr_RHatCharging +=
-            prob[s] *
-            (rcharging * DayAheadChargingPower[s][i][t] * DayAheadOnOffChargingStatus[s][i][t] * timeInterval);
-        //  expr_RHatCharging += prob[s] * (2 *
-        //  (DayAheadChargingPower[s][i][t]
-        //  * timeInterval) -(DayAheadUtilityPowerOutput[s][t] *
-        //  DayAheadBuySellStatus[s][t] * TOUPurchasePrice[t] *
-        //  timeInterval) - (DayAheadUtilityPowerOutput[s][t] * (1 -
-        //  DayAheadBuySellStatus[s][t]) * TOUSellPrice[t] *
-        //  timeInterval));
+            prob[s] * (rcharging * DayAheadChargingPowerLinearized[s][i][t] *
+                       timeInterval);
       }
-      expr_RHatCharging -= prob[s] * (DayAheadUtilityPowerOutput[s][t] *
-                                      DayAheadBuySellStatus[s][t] *
-                                      TOUPurchasePrice[t] * timeInterval);
-      expr_RHatCharging -= prob[s] * (DayAheadUtilityPowerOutput[s][t] *
-                                      (1 - DayAheadBuySellStatus[s][t]) *
-                                      TOUSellPrice[t] * timeInterval);
+      //      expr_RHatCharging -= prob[s] * (DayAheadUtilityPowerOutput[s][t] *
+      //                                      DayAheadBuySellStatus[s][t] *
+      //                                      TOUPurchasePrice[t] *
+      //                                      timeInterval);
+      //      expr_RHatCharging -= prob[s] * (DayAheadUtilityPowerOutput[s][t] *
+      //                                      (1 - DayAheadBuySellStatus[s][t])
+      //                                      * TOUSellPrice[t] * timeInterval);
+
+      expr_RHatCharging -=
+          prob[s] * (DayAheadUtilityPowerOutputLinearizedPurchase[s][t] *
+                     TOUPurchasePrice[t] * timeInterval);
+      expr_RHatCharging -=
+          prob[s] * ((DayAheadUtilityPowerOutput[s][t] -
+                      DayAheadUtilityPowerOutputLinearizedPurchase[s][t]) *
+                     TOUSellPrice[t] * timeInterval);
     }
   }
   // define expression for \hat{R} = \hat{R}_{\text {charging }} +
@@ -475,7 +493,6 @@ int main(int, char **) {
   expr_RHatCharging.end();
   expr_tHatParking.end();
   PowerBalance.end();
-  //  ChargingPowerLimit1.end();
 
   try {
     cplex.extract(model);
@@ -517,10 +534,10 @@ int main(int, char **) {
   // output the optimal solution
   ofstream myfile;
   myfile.open(current_path / "output.csv");
-  myfile
-      << "Time,tHin_i,tHout_i,i,DayAheadBuySellStatus,DayAheadOnOffChargingStatus,"
-         "DayAheadChargingPower,DayAheadUtilityPowerOutput,SOC"
-      << endl;
+  myfile << "Time,tHin_i,tHout_i,i,DayAheadBuySellStatus,"
+            "DayAheadOnOffChargingStatus,"
+            "DayAheadChargingPower,DayAheadUtilityPowerOutput,SOC"
+         << endl;
   for (int t = 0; t < nbTime; t++) {
     for (int i = 0; i < nbStations; i++) {
       myfile << t << "," << tHin[i] << "," << tHout[i] << "," << i << ","
