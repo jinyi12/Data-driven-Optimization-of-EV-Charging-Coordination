@@ -14,6 +14,8 @@
 #include "ilconcert/iloexpression.h"
 #include "ilconcert/ilosys.h"
 
+// #include <highfive/H5Easy.hpp>
+
 ILOSTLBEGIN
 
 typedef IloArray<IloNumVarArray> NumVarMatrix2D;
@@ -27,8 +29,21 @@ typedef IloArray<ExprArray2D> ExprArray3D;
 std::vector<std::vector<double>> read_csv(const std::string &filename,
                                           bool header);
 
-int main(int, char **) {
+int main(int argc, char *argv[]) {
   printf("Hello World!");
+
+  //  if not enough arguments, use the default input file
+  if (argc < 2) {
+    std::cout << "Not enough arguments, use the default input file"
+              << std::endl;
+    argv[1] = "/Users/jinyiyong/Documents/Optimization/DayAheadForecast/Data/"
+              "scenarios/scenarios_1.csv";
+  }
+
+  // assign input file name
+  std::string input_file = argv[1];
+
+  cout << "Input file: " << input_file << endl;
 
   std::mt19937 rng;
 
@@ -149,8 +164,11 @@ int main(int, char **) {
   // initialize tHout and tHin, tPredicterIn and tPredictedOut
   std::filesystem::path current_path = std::filesystem::current_path();
   std::cout << "Current path is : " << current_path << std::endl;
-  // go to parent path
-  current_path = current_path.parent_path();
+
+  // if the current path is not the root path, then go to parent path
+  if (current_path.filename() != "DayAheadForecast") {
+    current_path = current_path.parent_path();
+  }
 
   std::cout << "Current path now is : " << current_path << std::endl;
 
@@ -234,9 +252,29 @@ int main(int, char **) {
   // $s$ in kW
   // read csv file for solar scenarios
 
-  const char *solar_file = "Data/scenarios.csv";
-  std::filesystem::path solar_path = current_path / solar_file;
-  const char *solar_path_char = solar_path.c_str();
+  // const char *solar_file = "Data/scenarios.csv";
+  // std::filesystem::path solar_path = current_path / solar_file;
+  // const char *solar_path_char = solar_path.c_str();
+
+  // convert string
+  // input_file="/Users/jinyiyong/Documents/Optimization/DayAheadForecast/Data/scenarios/scenarios_12.csv"
+  // to char*
+
+  cout << "extracting number from file name" << endl;
+  const char *solar_path_char = input_file.c_str();
+
+  // print solar_path_char
+  cout << "solar_path_char is " << solar_path_char << endl;
+
+  // extract the digit from file name
+  std::string token1 = input_file.substr(input_file.find_last_of("_") + 1);
+  std::string token2 = token1.substr(0, token1.find_last_of("."));
+  int fileNumber = std::stoi(token2);
+  cout << "file number is " << fileNumber << endl;
+
+  std::string output_file = (current_path / "Data/output/output_");
+  output_file = output_file + std::to_string(fileNumber) + ".csv";
+  cout << "output file is " << output_file << endl;
 
   std::vector<std::vector<double>> solar_scenarios_2D =
       read_csv(solar_path_char, false);
@@ -533,19 +571,22 @@ int main(int, char **) {
 
   // output the optimal solution
   ofstream myfile;
-  myfile.open(current_path / "output.csv");
-  myfile << "Time,tHin_i,tHout_i,i,DayAheadBuySellStatus,"
+  myfile.open(output_file);
+  myfile << "Scenario,Time,tHin_i,tHout_i,i,DayAheadBuySellStatus,"
             "DayAheadOnOffChargingStatus,"
             "DayAheadChargingPower,DayAheadUtilityPowerOutput,SOC"
          << endl;
-  for (int t = 0; t < nbTime; t++) {
-    for (int i = 0; i < nbStations; i++) {
-      myfile << t << "," << tHin[i] << "," << tHout[i] << "," << i << ","
-             << cplex.getValue(DayAheadBuySellStatus[0][t]) << ","
-             << cplex.getValue(DayAheadOnOffChargingStatus[0][i][t]) << ","
-             << cplex.getValue(DayAheadChargingPower[0][i][t]) << ","
-             << cplex.getValue(DayAheadUtilityPowerOutput[0][t]) << ","
-             << cplex.getValue(SOC[0][i][t]) << endl;
+
+  for (int s = 0; s < nbScenarios; s++) {
+    for (int t = 0; t < nbTime; t++) {
+      for (int i = 0; i < nbStations; i++) {
+        myfile << s << "," << t << "," << tHin[i] << "," << tHout[i] << "," << i
+               << "," << cplex.getValue(DayAheadBuySellStatus[s][t]) << ","
+               << cplex.getValue(DayAheadOnOffChargingStatus[s][i][t]) << ","
+               << cplex.getValue(DayAheadChargingPower[s][i][t]) << ","
+               << cplex.getValue(DayAheadUtilityPowerOutput[s][t]) << ","
+               << cplex.getValue(SOC[s][i][t]) << endl;
+      }
     }
   }
 

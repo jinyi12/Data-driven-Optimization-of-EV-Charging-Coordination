@@ -4,7 +4,6 @@ import scipy
 import pandas as pd
 import matplotlib.pyplot as plt
 
-%matplotlib inline
 
 # %%
 filename = "Data/Irradiance_39.xlsx"
@@ -125,7 +124,7 @@ for i in range(47):
 # %%
 # for each time interval, use the corresponding distribution to sample 10 points, equivalent to 10 scenario
 # and plot the histogram of the sampled points. Add the samples into a numpy array
-nScenarios = 10
+nScenarios = 100
 scenarios = np.zeros((48, nScenarios)) # 48 time intervals, 100 scenarios
 fig, axes = plt.subplots(12, 4, figsize=(20, 15))
 for i, (name, group) in enumerate(df.groupby("Time")):

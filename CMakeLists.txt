@@ -66,4 +66,5 @@ target_link_libraries(DayAheadForecast PUBLIC ${CPLEX_LIBRARIES})
 
 include_directories(${Matlab_INCLUDE_DIRS})
 target_link_libraries(DayAheadForecast PUBLIC ${MATLAB_ENG_LIBRARY} ${MATLAB_MX_LIBRARY} ${MATLAB_MAT_LIBRARY})
+
 #set_target_properties(untitled PROPERTIES LINK_FLAGS "-lconcert -lilocplex -lcplex -lpthread -ldl")
