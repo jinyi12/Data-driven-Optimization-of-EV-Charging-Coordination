@@ -39,7 +39,7 @@ int main(int, char **) {
 
   std::normal_distribution<double> norm_dist_SOC(0.6, 0.1);
 
-  int nbScenarios = 10;
+  int nbScenarios = 100;
 
   IloEnv env;
   IloModel model(env);
