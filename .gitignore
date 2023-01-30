@@ -5,3 +5,8 @@
 /.cache
 /.clang-format
 /.DS_Store
+solar_generation.ipynb
+solar_time.ipynb
+output.csv
+.gitignore
+
