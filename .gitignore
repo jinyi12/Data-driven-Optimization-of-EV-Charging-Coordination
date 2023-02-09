@@ -9,5 +9,6 @@
 /Notebooks
 /Data
 /wandb
+/artifacts
 .gitignore
 conanfile.txt
