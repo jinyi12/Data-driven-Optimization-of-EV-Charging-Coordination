@@ -13,6 +13,7 @@
 #include "ilconcert/iloenv.h"
 #include "ilconcert/iloexpression.h"
 #include "ilconcert/ilosys.h"
+#include "ilcplex/ilocplexi.h"
 
 // #include <highfive/H5Easy.hpp>
 
@@ -553,9 +554,8 @@ int main(int argc, char *argv[]) {
   // 3600s
   cplex.setParam(IloCplex::Param::Threads,
                  1); // using one thread or core of CPU
-  cplex.setParam(IloCplex::Param::MIP::Tolerances::MIPGap, 0.3);
-  // //  set optimality target 3
-  // cplex.setParam(IloCplex::Param::OptimalityTarget, 3);
+  cplex.setParam(IloCplex::Param::MIP::Tolerances::MIPGap, 0.03);
+  cplex.setParam(IloCplex::Param::RootAlgorithm, 1);
 
   try {
     cplex.solve();
@@ -586,6 +586,70 @@ int main(int argc, char *argv[]) {
                << cplex.getValue(DayAheadChargingPower[s][i][t]) << ","
                << cplex.getValue(DayAheadUtilityPowerOutput[s][t]) << ","
                << cplex.getValue(SOC[s][i][t]) << endl;
+      }
+    }
+  }
+
+  // if (cplex.getStatus() == IloAlgorithm::Optimal) {
+  //   IloConstraint basis = cplex.getBasisStatuses();
+  //   std::vector<int> active_constraints;
+  //   for (int i = 0; i < cplex.getNrows(); i++) {
+  //     if (basis.getBasisStatus(i) == IloBasisStatus::Basic) {
+  //       active_constraints.push_back(i);
+  //     }
+  //   }
+  //   // Store active constraints in active_constraints
+  //   ...
+  // }
+
+  // try { // basis may not exist
+  // IloCplex::BasisStatusArray cstat(env);
+  // cplex.getBasisStatuses(cstat, var);
+  // env.out() << "Basis statuses = " << cstat << endl;
+  // } catch (...) {
+  // }
+
+  // output the active sets
+  ofstream myfile2;
+  std::string output_file2 =
+      output_file + std::to_string(fileNumber) + "_activeSet.csv";
+  myfile2.open(output_file2);
+  myfile2 << "Scenario,Time,i,activeSet_DayAheadBuySellStatus,activeSet_"
+             "DayAheadOnOffChargingStatus,activeSet_"
+             "DayAheadChargingPower"
+          << endl;
+
+
+  
+  
+
+  for (int s = 0; s < nbScenarios; s++) {
+    for (int t = 0; t < nbTime; t++) {
+      for (int i = 0; i < nbStations; i++) {
+        // basis might not exist
+
+        try {
+
+          
+          IloCplex::BasisStatus basisStatus;
+          basisStatus = cplex.getBasisStatus(DayAheadChargingPower[s][i][t]);
+
+          
+
+          env.out() << "Basis status = " << basisStatus << endl;
+
+          // myfile2 << s << "," << t << "," << i << ","
+          //         << cplex.getBasisStatus(DayAheadBuySellStatus[s][t]) << ","
+          //         <<
+          //         cplex.getBasisStatus(DayAheadOnOffChargingStatus[s][i][t])
+          //         << ","
+          //         << cplex.getBasisStatus(DayAheadChargingPower[s][i][t])
+          //         << endl;
+        } catch (IloException &e) {
+          cerr << "Concert exception caught: " << e << endl;
+        } catch (...) {
+          cerr << "Unknown exception caught" << endl;
+        }
       }
     }
   }
