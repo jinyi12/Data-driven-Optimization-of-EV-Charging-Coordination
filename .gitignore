@@ -6,7 +6,8 @@
 /.cache
 /.clang-format
 /.DS_Store
-/Notebooks
+/Notebooks/wandb
+/Notebooks/.ipynb_checkpoints
 /Data
 /wandb
 /artifacts
