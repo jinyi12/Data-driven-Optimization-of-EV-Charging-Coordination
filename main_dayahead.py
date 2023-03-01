@@ -15,7 +15,8 @@ if __name__ == "__main__":
     # if not enough arguments, use the default input file
     if len(sys.argv) < 2:
         print("No input file specified, using default input file")
-        input_file = "/Users/jinyiyong/Documents/Optimization/DayAheadForecast/Data/scenarios/scenarios_1.csv"
+        # input_file = "/Users/jinyiyong/Documents/Optimization/DayAheadForecast/Data/scenarios/scenarios_2.csv"
+        input_file = "Data/scenarios/scenarios_3.csv"
     else:
         input_file = sys.argv[1]
 
@@ -27,7 +28,8 @@ if __name__ == "__main__":
     mean_out = 16
     std_out = 1
 
-    nbScenarios = 100
+    nbScenarios = 1
+
 
     model: gb.Model = gb.Model("coordination")
 
@@ -120,7 +122,8 @@ if __name__ == "__main__":
     print("Current path is : ", current_path)
 
     #   if the current path is not the root path, then go to parent path
-    if current_path.split("/")[-1] != "DayAheadForecast":
+    # if doesnt match certain keywords like DayAhead or Data-driven, then go to parent path
+    if current_path.split("/")[-1].find("DayAheadForecast") == -1 and current_path.split("/")[-1].find("Data-driven") == -1:
         current_path = current_path.split("/")[:-1]
         current_path = "/".join(current_path)
 
@@ -471,15 +474,13 @@ if __name__ == "__main__":
                 DayAheadOnOffChargingStatus_s_i_t = DayAheadOnOffChargingStatus[s, i, t]
 
                 DayAheadChargingPower_s_i_t = DayAheadChargingPower[s, i, t]
-                
 
                 model.addConstr(
                     DayAheadChargingPowerLinearized_s_i_t
                     <= maxChargingPower * DayAheadOnOffChargingStatus_s_i_t
                 )
                 model.addConstr(
-                    DayAheadChargingPowerLinearized_s_i_t
-                    <= DayAheadChargingPower_s_i_t
+                    DayAheadChargingPowerLinearized_s_i_t <= DayAheadChargingPower_s_i_t
                 )
                 model.addConstr(DayAheadChargingPowerLinearized_s_i_t >= 0)
                 model.addConstr(
@@ -490,8 +491,6 @@ if __name__ == "__main__":
 
     end = time.time()
     print("Time to add charging power linearization constraints: " + str(end - start))
-
-
 
     # time to make linearized output power purchase
     start = time.time()
@@ -573,7 +572,7 @@ if __name__ == "__main__":
             for t in range(nbTime):
                 expr_tHatParking.add(
                     DayAheadOnOffChargingStatus[s, i, t],
-                    -(rebaterate * timeInterval * prob[s])
+                    -(rebaterate * timeInterval * prob[s]),
                 )
 
     # define expression for \hat{R}_{\text {parking }}=r_{\text {parking }}
@@ -612,23 +611,21 @@ if __name__ == "__main__":
 
             expr_RHatCharging.add(
                 DayAheadChargingPowerLinearized.sum(s, "*", t),
-                prob[s] * (rcharging * timeInterval)                
+                prob[s] * (rcharging * timeInterval),
             )
 
-            
             expr_RHatCharging.add(
                 DayAheadUtilityPowerOutputLinearizedPurchase[s, t],
-                -prob[s] * (TOUPurchasePrice[t] * timeInterval)                
+                -prob[s] * (TOUPurchasePrice[t] * timeInterval),
             )
-
 
             expr_RHatCharging.add(
                 DayAheadUtilityPowerOutput[s, t],
-                -prob[s] * (TOUSellPrice[t] * timeInterval)                
+                -prob[s] * (TOUSellPrice[t] * timeInterval),
             )
             expr_RHatCharging.add(
                 -DayAheadUtilityPowerOutputLinearizedPurchase[s, t],
-                -prob[s] * (TOUSellPrice[t] * timeInterval)                
+                -prob[s] * (TOUSellPrice[t] * timeInterval),
             )
 
     end = time.time()
@@ -654,4 +651,34 @@ if __name__ == "__main__":
     # print("cost_vectors", cost_vectors)
 
     # get output
-    mp.optimize()
+    model.optimize()
+
+    # get the vars by name
+    DayAheadBuySellStatusVars = [var for var in model.getVars() if "DayAheadBuySellStatus" in var.varName]
+    DayAheadOnOffChargingStatusVars = [var for var in model.getVars() if "DayAheadOnOffChargingStatus" in var.varName]
+    DayAheadChargingPowerVars = [var for var in model.getVars() if "DayAheadChargingPower" in var.varName]
+    DayAheadUtilityPowerOutputVars = [var for var in model.getVars() if "DayAheadUtilityPowerOutput" in var.varName]
+    SOCVars = [var for var in model.getVars() if "SOC" in var.varName]
+
+    output_vars = [DayAheadBuySellStatusVars, DayAheadOnOffChargingStatusVars, DayAheadChargingPowerVars, DayAheadUtilityPowerOutputVars]
+
+    # get the solution for each variable above
+    DayAheadBuySellStatusSolution = model.getAttr("X", DayAheadBuySellStatusVars)
+    DayAheadOnOffChargingStatusSolution = model.getAttr("X", DayAheadOnOffChargingStatusVars)
+    DayAheadChargingPowerSolution = model.getAttr("X", DayAheadChargingPowerVars)
+    DayAheadUtilityPowerOutputSolution = model.getAttr("X", DayAheadUtilityPowerOutputVars)
+    SOCSolution = model.getAttr("X", SOCVars)
+
+
+    # concatenate the solution without SOC
+    solution = np.concatenate((DayAheadBuySellStatusSolution, DayAheadOnOffChargingStatusSolution, DayAheadChargingPowerSolution, DayAheadUtilityPowerOutputSolution))
+
+    solution_dict = dict()
+    solution_dict["DayAheadBuySellStatus"] = DayAheadBuySellStatusSolution
+    solution_dict["DayAheadOnOffChargingStatus"] = DayAheadOnOffChargingStatusSolution
+    solution_dict["DayAheadChargingPower"] = DayAheadChargingPowerSolution
+    solution_dict["DayAheadUtilityPowerOutput"] = DayAheadUtilityPowerOutputSolution
+    solution_dict["SOC"] = SOCSolution
+
+    # print the shape of the solution
+    print("solution shape", solution.shape)
