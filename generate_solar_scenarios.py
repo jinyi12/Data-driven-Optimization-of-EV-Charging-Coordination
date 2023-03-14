@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import sys
 import datetime
 
+import scenred.scenario_reduction as scen_red
 
 if __name__ == "__main__":
     filename = "Data/Irradiance_39.xlsx"
@@ -137,4 +138,10 @@ if __name__ == "__main__":
     for i in range(48):
         scenarios[i] = scenarios[i] * (max_irradiance - min_irradiance) + min_irradiance
 
-    np.savetxt("Data/scenarios/scenarios_{}.csv".format(counter), scenarios.T, delimiter=",")
+    S = scen_red.ScenarioReduction(scenarios, probabilities=None, cost_func='General', r = 2)
+    S.fast_forward_sel(n_sc_red=10, num_threads = 4)  # use fast forward selection algorithm to reduce to 5 scenarios with 4 threads 
+    scenarios_reduced = S.scenarios_reduced  # get reduced scenarios
+    probabilities_reduced = S.probabilities_reduced  # get reduced probabilities
+
+    np.savetxt("Data/scenarios/scenarios_{}.csv".format(counter), scenarios_reduced.T, delimiter=",")
+    np.savetxt("Data/probabilities/probabilities_{}.csv".format(counter), probabilities_reduced, delimiter=",")
