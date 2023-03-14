@@ -8,6 +8,7 @@ import sys
 import time
 import datetime
 import math
+import pickle
 
 
 if __name__ == "__main__":
@@ -28,7 +29,7 @@ if __name__ == "__main__":
     mean_out = 16
     std_out = 1
 
-    nbScenarios = 1
+    nbScenarios = 10
 
 
     model: gb.Model = gb.Model("coordination")
@@ -61,13 +62,8 @@ if __name__ == "__main__":
     for i in range(nbStations):
         BatteryCapacity[i] = 64
 
-    prob = np.zeros(nbScenarios)
     TOUPurchasePrice = np.zeros(nbTime)
     TOUSellPrice = np.zeros(nbTime)
-
-    # probability of scenario s happening is 1/nbScenarios
-    for s in range(nbScenarios):
-        prob[s] = 1.0 / nbScenarios
 
     # TOU purchase price is 0.584/kWh on peak, 0.357 on mid-peak, and 0.281 on
     # off peak
@@ -121,6 +117,9 @@ if __name__ == "__main__":
     current_path = os.getcwd()
     print("Current path is : ", current_path)
 
+    # extract the digit from file name where the file name is of the form "scenario_1.csv"
+    fileNumber = input_file.split("_")[1].split(".")[0]
+
     #   if the current path is not the root path, then go to parent path
     # if doesnt match certain keywords like DayAhead or Data-driven, then go to parent path
     if current_path.split("/")[-1].find("DayAheadForecast") == -1 and current_path.split("/")[-1].find("Data-driven") == -1:
@@ -152,6 +151,9 @@ if __name__ == "__main__":
     SOC_path = os.path.join(current_path, SOC_file)
 
     SOC_vec = pd.read_csv(SOC_path, header=None).to_numpy()
+
+    # read probability distribution from .csv
+    prob = pd.read_csv(current_path + "/Data/probabilities/probabilities_" + fileNumber + ".csv", header=None).to_numpy()
 
     #   initialize ON/OFF for predicted charging status, for each scenario,
     #   charging station, and time period
@@ -220,10 +222,6 @@ if __name__ == "__main__":
     #   ---------------------------------------------------------------------------
     #   *************** 2. Initialize variables for constraints ***************
     #   ---------------------------------------------------------------------------
-
-    # extract the digit from file name where the file name is of the form "scenario_1.csv"
-    fileNumber = input_file.split("_")[1].split(".")[0]
-    output_file = current_path + "Data/output/output_" + fileNumber + ".csv"
 
     #   initialize state-of-charge (SOC) decision variable at $t$th interval, under scenario $s$, for
     #   $i$th EV
@@ -636,19 +634,18 @@ if __name__ == "__main__":
 
     model.update()
 
-    mp = model.presolve()
+    # mp = model.presolve()
 
     # get constraint matrix
-    A = mp.getA()
-    # print("A", A)
+    A = model.getA()
 
     # get the right hand side
-    rhs = mp.getAttr("RHS", mp.getConstrs())
-    # print("rhs", rhs)
+    rhs = model.getAttr("RHS", model.getConstrs())
+    rhs = np.array(rhs)
 
     # get the coefficients of the objective function
-    cost_vectors = mp.getAttr("Obj", mp.getVars())
-    # print("cost_vectors", cost_vectors)
+    cost_vectors = model.getAttr("Obj", model.getVars())
+    cost_vectors = np.array(cost_vectors)
 
     # get output
     model.optimize()
@@ -671,7 +668,7 @@ if __name__ == "__main__":
 
 
     # concatenate the solution without SOC
-    solution = np.concatenate((DayAheadBuySellStatusSolution, DayAheadOnOffChargingStatusSolution, DayAheadChargingPowerSolution, DayAheadUtilityPowerOutputSolution))
+    output = np.concatenate((DayAheadBuySellStatusSolution, DayAheadOnOffChargingStatusSolution))
 
     solution_dict = dict()
     solution_dict["DayAheadBuySellStatus"] = DayAheadBuySellStatusSolution
@@ -679,6 +676,26 @@ if __name__ == "__main__":
     solution_dict["DayAheadChargingPower"] = DayAheadChargingPowerSolution
     solution_dict["DayAheadUtilityPowerOutput"] = DayAheadUtilityPowerOutputSolution
     solution_dict["SOC"] = SOCSolution
+    solution_dict["output"] = output
 
     # print the shape of the solution
-    print("solution shape", solution.shape)
+    print("target shape", output.shape)
+
+    # write solution_dict to a file
+    with open(current_path + "/Data/output/solution_dict_" + fileNumber + ".pkl", "wb") as f:
+        pickle.dump(solution_dict, f)
+    
+    # input dictionary
+    input_dict = dict()
+    input_dict["A"] = A
+    input_dict["b"] = rhs
+    input_dict["c"] = cost_vectors
+
+    print("A shape", A.shape)
+    print("b shape", rhs.shape)
+    print("c shape", cost_vectors.shape)
+
+    # write input_dict to a file
+    with open(current_path + "/Data/output/input_dict_" + fileNumber + ".pkl", "wb") as f:
+        pickle.dump(input_dict, f)
+    
