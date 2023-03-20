@@ -11,6 +11,7 @@
 /Notebooks/__pycache__
 /Data
 /wandb
+/scenred
 /artifacts
 .gitignore
 conanfile.txt

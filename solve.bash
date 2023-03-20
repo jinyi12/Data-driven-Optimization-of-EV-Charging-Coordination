@@ -5,8 +5,8 @@ for file in ~/Documents/Optimization/DayAheadForecast/Data/scenarios/*; do
     echo $file
 
     echo "Running the program..."
-    ./build/DayAheadForecast $file
+    python main_dayahead.py $file
 
-    # wait for 5 seconds
-    sleep 5
+    echo "Done"
+
 done

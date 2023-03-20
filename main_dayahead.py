@@ -650,7 +650,6 @@ if __name__ == "__main__":
     # get output
     model.optimize()
 
-    # get the vars by name
     DayAheadBuySellStatusVars = [var for var in model.getVars() if "DayAheadBuySellStatus" in var.varName]
     DayAheadOnOffChargingStatusVars = [var for var in model.getVars() if "DayAheadOnOffChargingStatus" in var.varName]
     DayAheadChargingPowerVars = [var for var in model.getVars() if "DayAheadChargingPower" in var.varName]
@@ -666,6 +665,11 @@ if __name__ == "__main__":
     DayAheadUtilityPowerOutputSolution = model.getAttr("X", DayAheadUtilityPowerOutputVars)
     SOCSolution = model.getAttr("X", SOCVars)
 
+    DayAheadBuySellStatusIndices = [var.index for var in DayAheadBuySellStatusVars]
+    DayAheadOnOffChargingStatusIndices = [var.index for var in DayAheadOnOffChargingStatusVars]
+    DayAheadChargingPowerIndices = [var.index for var in DayAheadChargingPowerVars]
+    DayAheadUtilityPowerOutputIndices = [var.index for var in DayAheadUtilityPowerOutputVars]
+    SOCIndices = [var.index for var in SOCVars]
 
     # concatenate the solution without SOC
     output = np.concatenate((DayAheadBuySellStatusSolution, DayAheadOnOffChargingStatusSolution))
@@ -678,12 +682,23 @@ if __name__ == "__main__":
     solution_dict["SOC"] = SOCSolution
     solution_dict["output"] = output
 
+    indices_dict = dict()
+    indices_dict["DayAheadBuySellStatus"] = DayAheadBuySellStatusIndices
+    indices_dict["DayAheadOnOffChargingStatus"] = DayAheadOnOffChargingStatusIndices
+    indices_dict["DayAheadChargingPower"] = DayAheadChargingPowerIndices
+    indices_dict["DayAheadUtilityPowerOutput"] = DayAheadUtilityPowerOutputIndices
+    indices_dict["SOC"] = SOCIndices
+
     # print the shape of the solution
     print("target shape", output.shape)
 
     # write solution_dict to a file
     with open(current_path + "/Data/output/solution_dict_" + fileNumber + ".pkl", "wb") as f:
         pickle.dump(solution_dict, f)
+
+    # write indices_dict to a file
+    with open(current_path + "/Data/output/indices_dict" + ".pkl", "wb") as f:
+        pickle.dump(indices_dict, f)
     
     # input dictionary
     input_dict = dict()
