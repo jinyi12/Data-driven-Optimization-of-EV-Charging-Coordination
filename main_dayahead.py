@@ -9,17 +9,33 @@ import time
 import datetime
 import math
 import pickle
+import argparse
 
+# default configs in toml file
+default_config = {
+    "input_file": "Data/scenarios/1000_scenario_samples.pkl",
+    "input_file_single": "Data/scenarios/scenarios_3.csv",
+    "solve_batch": True,
+}
+
+
+def parse_args():
+    "Overriding default argments"
+    argparser = argparse.ArgumentParser(description='Parse args for solver')
+    argparser.add_argument('--input_file', type=str, default=default_config.input_file, help='input file')
+    argparser.add_argument('--input_file_single', type=str, default=default_config.input_file_single, help='input file single')
+    argparser.add_argument('--solve_batch', type=bool, default=default_config.solve_batch, help='solve batch')
+    
+    args = argparser.parse_args()
+    vars(default_config).update(vars(args))
+    return
 
 if __name__ == "__main__":
 
     # if not enough arguments, use the default input file
-    if len(sys.argv) < 2:
-        print("No input file specified, using default input file")
-        # input_file = "/Users/jinyiyong/Documents/Optimization/DayAheadForecast/Data/scenarios/scenarios_2.csv"
-        input_file = "Data/scenarios/scenarios_3.csv"
-    else:
-        input_file = sys.argv[1]
+    parse_args()
+
+    input_file = default_config.input_file
 
     # read the input file
     DayAheadSolarOutput = pd.read_csv(input_file, header=None).to_numpy()
@@ -160,11 +176,6 @@ if __name__ == "__main__":
     #   initialize ON/OFF for charging status, for each scenario, charging station,
     #   and time period
 
-    # DayAheadOnOffChargingStatus = model.addMVar(
-    #     shape=(nbScenarios, nbStations, nbTime),
-    #     vtype=gb.GRB.BINARY,
-    #     name="DayAheadOnOffChargingStatus",
-    # )
 
     DayAheadOnOffChargingStatus = model.addVars(
         nbScenarios,
@@ -174,13 +185,6 @@ if __name__ == "__main__":
         name="DayAheadOnOffChargingStatus",
     )
 
-    # DayAheadChargingPower = model.addMVar(
-    #     shape=(nbScenarios, nbStations, nbTime),
-    #     lb=0,
-    #     ub=maxChargingPower,
-    #     vtype=gb.GRB.CONTINUOUS,
-    #     name="DayAheadChargingPower",
-    # )
 
     DayAheadChargingPower = model.addVars(
         nbScenarios,
@@ -192,13 +196,6 @@ if __name__ == "__main__":
         name="DayAheadChargingPower",
     )
 
-    # DayAheadUtilityPowerOutput = model.addMVar(
-    #     shape=(nbScenarios, nbTime),
-    #     lb=-GRB.INFINITY,
-    #     ub=GRB.INFINITY,
-    #     vtype=gb.GRB.CONTINUOUS,
-    #     name="DayAheadUtilityPowerOutput",
-    # )
 
     DayAheadUtilityPowerOutput = model.addVars(
         nbScenarios,
@@ -209,9 +206,6 @@ if __name__ == "__main__":
         name="DayAheadUtilityPowerOutput",
     )
 
-    # DayAheadBuySellStatus = model.addMVar(
-    #     shape=(nbScenarios, nbTime), vtype=gb.GRB.BINARY, name="DayAheadBuySellStatus"
-    # )
 
     DayAheadBuySellStatus = model.addVars(
         nbScenarios, nbTime, vtype=gb.GRB.BINARY, name="DayAheadBuySellStatus"
@@ -226,14 +220,6 @@ if __name__ == "__main__":
     #   initialize state-of-charge (SOC) decision variable at $t$th interval, under scenario $s$, for
     #   $i$th EV
 
-    # SOC = model.addMVar(
-    #     shape=(nbScenarios, nbStations, nbTime),
-    #     lb=0,
-    #     ub=1,
-    #     vtype=gb.GRB.CONTINUOUS,
-    #     name="SOC",
-    # )
-
     SOC = model.addVars(
         nbScenarios, nbStations, nbTime, lb=0, ub=1, vtype=gb.GRB.CONTINUOUS, name="SOC"
     )
@@ -244,28 +230,6 @@ if __name__ == "__main__":
 
     # 1. Power balance
     # Total power output from solar and utility grid == Sum of EV charging load
-
-    #   ExprArray2D PowerBalance(env, nbScenarios);
-    #   for (int s = 0; s < nbScenarios; s++) {
-    #     PowerBalance[s] = IloExprArray(env, nbTime);
-    #     for (int t = 0; t < nbTime; t++) {
-    #       PowerBalance[s][t] = IloExpr(env);
-    #       PowerBalance[s][t] += DayAheadSolarOutput[s][t];
-    #       PowerBalance[s][t] += DayAheadUtilityPowerOutput[s][t];
-    #       for (int i = 0; i < nbStations; i++) {
-    #         PowerBalance[s][t] -= DayAheadChargingPower[s][i][t];
-    #       }
-    #       model.add(PowerBalance[s][t] == 0);
-    #     }
-    #   }
-
-    # PowerBalance = DayAheadSolarOutput + DayAheadUtilityPowerOutput
-    # for i in range(nbStations):
-    #     PowerBalance -= DayAheadChargingPower[:, i, :]
-    # model.addConstrs(
-    #     (PowerBalance[s, t] == 0 for s in range(nbScenarios) for t in range(nbTime)),
-    #     name="PowerBalance",
-    # )
 
     for s in range(nbScenarios):
         for t in range(nbTime):
@@ -348,39 +312,6 @@ if __name__ == "__main__":
         name="GreaterSOC",
     )
 
-    # for s in range(nbScenarios):
-    #     # time the loop
-    #     start = time.time()
-    #     for i in range(nbStations):
-    #         expr = SOC[s, i, tHin[i]]
-    #         for t in range(nbTime):
-    #             # if t <= tHin[i]:
-    #             #     model.addConstr(SOC[s, i, t] == SOC_vec[i])
-    #             # if t > tHin[i] and t <= tHout[i]:
-    #             #     model.addConstr(
-    #             #         SOC[s, i, t]
-    #             #         == SOC[s, i, t - 1]
-    #             #         + DayAheadChargingPower[s, i, t]
-    #             #         * timeInterval
-    #             #         / BatteryCapacity[i]
-    #             #     )
-    #             # if t > tHout[i]:
-    #             #     model.addConstr(SOC[s, i, t] == SOC[s, i, tHout[i]])
-
-    #             expr += (
-    #                 DayAheadChargingPower[s, i, t] * timeInterval / BatteryCapacity[i]
-    #             )
-
-    #         model.addConstr(expr == 1)
-
-    #     end = time.time()
-    #     print(
-    #         "Time to add SOC constraints for scenario "
-    #         + str(s)
-    #         + ": "
-    #         + str(end - start)
-    #     )
-
     model.addConstrs(
         (
             (
@@ -435,17 +366,6 @@ if __name__ == "__main__":
         ),
         name="ChargingPower2",
     )
-
-    # Linearize DayAheadChargingPower * DayAheadOnOffChargingStatus
-    # DayAheadChargingPowerLinearized = model.addMVar(
-    #     nbScenarios,
-    #     nbStations,
-    #     nbTime,
-    #     lb=0,
-    #     ub=maxChargingPower,
-    #     vtype=GRB.CONTINUOUS,
-    #     name="DayAheadChargingPowerLinearized",
-    # )
 
     # time to make charging power linear
 
@@ -552,16 +472,6 @@ if __name__ == "__main__":
     # parking fee rebate rate * time interval * prob[s] *
     # DayAheadOnOffChargingStatus .
 
-    #       IloExpr expr_tHatParking(env);
-    #   for (int s = 0; s < nbScenarios; s++) {
-    #     for (int i = 0; i < nbStations; i++) {
-    #       expr_tHatParking += (tHout[i] - tHin[i]);
-    #       for (int t = 0; t < nbTime; t++) {
-    #         expr_tHatParking -= (rebaterate * timeInterval * prob[s] *
-    #                              DayAheadOnOffChargingStatus[s][i][t]);
-    #       }
-    #     }
-    #   }
     expr_tHatParking = gb.LinExpr()
     for s in range(nbScenarios):
         for i in range(nbStations):
@@ -577,29 +487,6 @@ if __name__ == "__main__":
     # \sum_{i=1}^N \hat{t}_{\text {parking }, i}
 
     expr_RHatParking = rparking * expr_tHatParking
-
-    # Convert the following CPLEX code to Gurobi
-    """
-    IloExpr expr_RHatCharging(env);
-    for (int s = 0; s < nbScenarios; s++) {
-        for (int t = 0; t < nbTime; t++) {
-        for (int i = 0; i < nbStations; i++) {
-            expr_RHatCharging +=
-                prob[s] * (rcharging * DayAheadChargingPowerLinearized[s][i][t] *
-                        timeInterval);
-        }
-
-        expr_RHatCharging -=
-            prob[s] * (DayAheadUtilityPowerOutputLinearizedPurchase[s][t] *
-                        TOUPurchasePrice[t] * timeInterval);
-        expr_RHatCharging -=
-            prob[s] * ((DayAheadUtilityPowerOutput[s][t] -
-                        DayAheadUtilityPowerOutputLinearizedPurchase[s][t]) *
-                        TOUSellPrice[t] * timeInterval);
-        }
-    }
-
-    """
 
     # time to build expression
     start = time.time()
