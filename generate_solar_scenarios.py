@@ -116,9 +116,9 @@ if __name__ == "__main__":
         # for each time interval, use the corresponding distribution to sample 10 points, equivalent to 10 scenario
         # Add the samples into a numpy array
         scenarios = np.zeros((48, nScenarios)) # 48 time intervals, 100 scenarios
-        fig, axes = plt.subplots(12, 4, figsize=(20, 15))
+        # fig, axes = plt.subplots(12, 4, figsize=(20, 15))
         for i, (name, group) in enumerate(df.groupby("Time")):
-            ax = axes[i // 4, i % 4]
+            # ax = axes[i // 4, i % 4]
             # if the group contains only zeros, skip it
             if group["Ghi Curr Day"].sum() > 0:
                 # get the parameters of the fitted distribution
@@ -138,8 +138,8 @@ if __name__ == "__main__":
                 # add the samples to the scenarios array
                 scenarios[i] = samples
                 # plot the histogram of the sampled points
-                ax.hist(samples, bins='auto', density=True)
-                ax.set_title(name)
+                # ax.hist(samples, bins='auto', density=True)
+                # ax.set_title(name)
             else:
                 # sample zeros instead
                 samples = np.zeros(nScenarios)
@@ -166,5 +166,5 @@ if __name__ == "__main__":
     scenarios_dict["probabilities"] = probabilities_list
 
     # save the dictionary into a pickle file
-    with open("Data/scenarios/scenarios_{}.pkl".format(counter), "wb") as f:
+    with open("Data/scenarios/1000_scenario_samples.pkl".format(counter), "wb") as f:
         pickle.dump(scenarios_dict, f)
