@@ -4,6 +4,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import sys
 import datetime
+import pickle 
 
 import scenred.scenario_reduction as scen_red
 
@@ -101,47 +102,69 @@ if __name__ == "__main__":
         max_diff_dict[i] = max_diff
 
 
+    #%%
+    scenarios_list = []
+    probabilities_list = []
+
+    # number of samples to be generated
+    nSamples = 1000
+
     # %%
-    # for each time interval, use the corresponding distribution to sample 10 points, equivalent to 10 scenario
-    # Add the samples into a numpy array
-    scenarios = np.zeros((48, nScenarios)) # 48 time intervals, 100 scenarios
-    fig, axes = plt.subplots(12, 4, figsize=(20, 15))
-    for i, (name, group) in enumerate(df.groupby("Time")):
-        ax = axes[i // 4, i % 4]
-        # if the group contains only zeros, skip it
-        if group["Ghi Curr Day"].sum() > 0:
-            # get the parameters of the fitted distribution
-            a, b, loc, scale = fit_dict[name]["params"]
-            # sample 10 points from the distribution
-            samples = scipy.stats.beta.rvs(a, b, loc, scale, size=nScenarios)
+    
+    for i in range(nSamples):
+    
+        # for each time interval, use the corresponding distribution to sample 10 points, equivalent to 10 scenario
+        # Add the samples into a numpy array
+        scenarios = np.zeros((48, nScenarios)) # 48 time intervals, 100 scenarios
+        fig, axes = plt.subplots(12, 4, figsize=(20, 15))
+        for i, (name, group) in enumerate(df.groupby("Time")):
+            ax = axes[i // 4, i % 4]
+            # if the group contains only zeros, skip it
+            if group["Ghi Curr Day"].sum() > 0:
+                # get the parameters of the fitted distribution
+                a, b, loc, scale = fit_dict[name]["params"]
+                # sample 10 points from the distribution
+                samples = scipy.stats.beta.rvs(a, b, loc, scale, size=nScenarios)
 
-            # if the difference in irradiance between previous time step and current timestep is greater than 0.44
-            # resample the respective points until the difference is less than 0.44
-            while(np.max(samples - scenarios[i-1]) > max_diff_dict[name]):
-                # get the indices of the points that need to be resampled
-                idx = np.where(samples - scenarios[i-1] > max_diff_dict[name])[0]
-                # resample the points
-                samples[idx] = scipy.stats.beta.rvs(a, b, loc, scale, size=len(idx))
-                
+                # if the difference in irradiance between previous time step and current timestep is greater than 0.44
+                # resample the respective points until the difference is less than 0.44
+                while(np.max(samples - scenarios[i-1]) > max_diff_dict[name]):
+                    # get the indices of the points that need to be resampled
+                    idx = np.where(samples - scenarios[i-1] > max_diff_dict[name])[0]
+                    # resample the points
+                    samples[idx] = scipy.stats.beta.rvs(a, b, loc, scale, size=len(idx))
+                    
 
-            # add the samples to the scenarios array
-            scenarios[i] = samples
-            # plot the histogram of the sampled points
-            ax.hist(samples, bins='auto', density=True)
-            ax.set_title(name)
-        else:
-            # sample zeros instead
-            samples = np.zeros(nScenarios)
-            scenarios[i] = samples 
-    # %%
-    # scale the scenarios to the original irradiance range, and convert to kW by multiplying 0.0005
-    for i in range(48):
-        scenarios[i] = scenarios[i] * (max_irradiance - min_irradiance) + min_irradiance
+                # add the samples to the scenarios array
+                scenarios[i] = samples
+                # plot the histogram of the sampled points
+                ax.hist(samples, bins='auto', density=True)
+                ax.set_title(name)
+            else:
+                # sample zeros instead
+                samples = np.zeros(nScenarios)
+                scenarios[i] = samples 
+        
+        # scale the scenarios to the original irradiance range, and convert to kW by multiplying 0.0005
+        for i in range(48):
+            scenarios[i] = scenarios[i] * (max_irradiance - min_irradiance) + min_irradiance
 
-    S = scen_red.ScenarioReduction(scenarios, probabilities=None, cost_func='General', r = 2)
-    S.fast_forward_sel(n_sc_red=10, num_threads = 4)  # use fast forward selection algorithm to reduce to 5 scenarios with 4 threads 
-    scenarios_reduced = S.scenarios_reduced  # get reduced scenarios
-    probabilities_reduced = S.probabilities_reduced  # get reduced probabilities
+        S = scen_red.ScenarioReduction(scenarios, probabilities=None, cost_func='General', r = 2)
+        S.fast_forward_sel(n_sc_red=10, num_threads = 4)  # use fast forward selection algorithm to reduce to 5 scenarios with 4 threads 
+        scenarios_reduced = S.scenarios_reduced  # get reduced scenarios
+        probabilities_reduced = S.probabilities_reduced  # get reduced probabilities
 
-    np.savetxt("Data/scenarios/scenarios_{}.csv".format(counter), scenarios_reduced.T, delimiter=",")
-    np.savetxt("Data/probabilities/probabilities_{}.csv".format(counter), probabilities_reduced, delimiter=",")
+        scenarios_list.append(scenarios_reduced)
+        probabilities_list.append(probabilities_reduced)
+
+    # np.savetxt("Data/scenarios/scenarios_{}.csv".format(counter), scenarios_reduced.T, delimiter=",")
+    # np.savetxt("Data/probabilities/probabilities_{}.csv".format(counter), probabilities_reduced, delimiter=",")
+
+    # save the scenarios and probabilities into a dictionary
+    scenarios_dict = {}
+    scenarios_dict["scenarios"] = scenarios_list
+    scenarios_dict["probabilities"] = probabilities_list
+
+    # save the dictionary into a pickle file
+    with open("Data/scenarios/scenarios_{}.pkl".format(counter), "wb") as f:
+        pickle.dump(scenarios_dict, f)
