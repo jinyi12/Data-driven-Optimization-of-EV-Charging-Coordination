@@ -12,8 +12,58 @@ import pickle
 import argparse
 import scipy
 import argparse
+import tqdm
 
 from sklearn.metrics.pairwise import cosine_similarity
+
+
+class mycallback():
+    """docstring for mycallback."""
+    def __init__(self):
+        super(mycallback, self).__init__()
+        self.var_solution_values = None
+        self.var_suboptimal_solution_values = None
+        self.sol_count = None
+        
+        # self.var_reduced_cost = None
+        
+        # self.const_dualsolution_values = None
+        # self.const_basis_status = None
+        
+    
+    def __call__(self, model, where):  
+        
+        if where != GRB.Callback.MIPNODE:
+            # if where == GRB.Callback.MIPSOL:
+            #     self.sol_count = model.cbGet(GRB.Callback.MIPSOL_SOLCNT)
+            #     print("Solution count: ", self.sol_count)
+            return
+
+        nodecount = model.cbGet(GRB.Callback.MIPNODE_NODCNT)
+        if nodecount > 0:
+            print("Root node completed, terminate now")
+            model.terminate()
+            return 
+        
+        print("Status: ", model.cbGet(GRB.Callback.MIPNODE_STATUS))
+        
+        # print("Node count: ", nodecount)
+
+        # at each cut, we get the solution values
+        if model.cbGet(GRB.Callback.MIPNODE_STATUS) == GRB.Status.OPTIMAL:
+            self.var_solution_values = model.cbGetNodeRel(model.getVars())
+        
+        if model.cbGet(GRB.Callback.MIPNODE_STATUS) == GRB.Status.SUBOPTIMAL:
+            self.var_suboptimal_solution_values = model.cbGetNodeRel(model.getVars())
+            # self.var_reduced_cost = fixed.getAttr(GRB.Attr.RC, fixed.getVars())
+            # self.const_dualsolution_values = fixed.getAttr(GRB.Attr.Pi, fixed.getConstrs())
+            # self.const_basis_status = fixed.getAttr(GRB.Attr.CBasis, fixed.getConstrs())
+            # .getAttr(GRB.Attr.RC)
+            
+
+
+def mycallback_wrapper(model, where, callback=None):
+    return callback(model, where)
 
 
 def get_coefficients(model):
@@ -37,7 +87,7 @@ def get_solution(model):
     """
     solution = model.getAttr("X", model.getVars())
     solution = np.array(solution)
-
+        
     return solution
 
 
@@ -121,8 +171,32 @@ def get_var_LP_features(model):
     5. Has lower bound
     6. Has upper bound
     """
+    # try:
+    #     LP_relaxation_value = np.array(model.getAttr("X", model.getVars()))
 
-    LP_relaxation_value = np.array(model.getAttr("X", model.getVars()))
+    # except:
+    callback = mycallback()
+    # get output
+    model.optimize(lambda model, where: mycallback_wrapper(model, where, callback=callback))
+    LP_relaxation_value = callback.var_solution_values
+    
+    # if LP_relaxation_value is None, check for infeasibility
+    # if feasible, then get the solution values
+    if LP_relaxation_value is None:
+        if model.status == GRB.INFEASIBLE:
+            print("Infeasible model")
+            return
+        elif (model.status == GRB.OPTIMAL or model.status == GRB.INTERRUPTED):
+            print("Feasible model")
+            LP_relaxation_value = model.getAttr("X", model.getVars())
+        else:
+            print("Model status: ", model.status)
+            LP_relaxation_value = callback.var_suboptimal_solution_values
+            return
+    
+    LP_relaxation_value = np.array(LP_relaxation_value)
+    
+    
     is_LP_relaxation_value_fractional = np.array(
         [1 if math.modf(x)[0] != 0 else 0 for x in LP_relaxation_value]
     )
@@ -413,17 +487,15 @@ def get_input_data(model):
 
     return input_dict
 
-def get_data(model):
+def get_output_solution(data_dict, model):
     """
     Get the input data and the solution data of the model
     """
     solution_dict, indices_dict = get_solution_data(model)
     input_dict = get_input_data(model)
 
-    data_dict = dict()
     data_dict["solution"] = solution_dict
     data_dict["indices"] = indices_dict
-    data_dict["input"] = input_dict
 
     return data_dict
 
@@ -461,16 +533,22 @@ if __name__ == "__main__":
     config = parse_args()
     dataset = []
     model_files = os.listdir("instances/mip/data/COR-LAT")
+    # model_files = ["cor-lat-2f+r-u-10-10-10-5-100-3.002.b86.000000.prune2.lp"]
     # if argument "--update" is passed, then update the dataset for input data
     if not config["update"]:
         print("Creating the dataset")
         for file in model_files:
+            
+            data = dict()
             # read the file
             model = gb.read("instances/mip/data/COR-LAT/" + file)
+            
+            input_dict = get_input_data(model)
+            
             model.optimize()
 
             # get data
-            data = get_data(model)
+            data = get_output_solution(data, model)
 
             # append the data to the dataset
             dataset.append(data)
@@ -480,13 +558,15 @@ if __name__ == "__main__":
             pickle.dump(dataset, f)
     
     else:
-        print("Updating the dataset")
-        # read the dataset
+        print("Routine for updating the dataset")
+        print("Reading the dataset")
+        # # read the dataset
         with open("Data/corlat/corlat.pickle", "rb") as f:
             dataset = pickle.load(f)
         
+        print("Updating the dataset")
         # update the dataset
-        for i in range(len(dataset)):
+        for i in tqdm.trange(len(dataset)):           
             
             model = gb.read("instances/mip/data/COR-LAT/" + model_files[i])
             
