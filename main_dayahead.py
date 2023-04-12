@@ -33,9 +33,9 @@ def parse_args():
 if __name__ == "__main__":
 
     # if not enough arguments, use the default input file
-    parse_args()
+    # parse_args()
 
-    input_file = default_config.input_file
+    input_file = default_config["input_file_single"]
 
     # read the input file
     DayAheadSolarOutput = pd.read_csv(input_file, header=None).to_numpy()
@@ -45,7 +45,7 @@ if __name__ == "__main__":
     mean_out = 16
     std_out = 1
 
-    nbScenarios = 10
+    nbScenarios = 1
 
 
     model: gb.Model = gb.Model("coordination")
@@ -533,9 +533,47 @@ if __name__ == "__main__":
     # get the coefficients of the objective function
     cost_vectors = model.getAttr("Obj", model.getVars())
     cost_vectors = np.array(cost_vectors)
+    
+    class mycallback():
+        """docstring for mycallback."""
+        def __init__(self):
+            super(mycallback, self).__init__()
+            self.var_solution_values = None
+            self.var_reduced_cost = None
+            
+            self.const_dualsolution_values = None
+            self.const_basis_status = None
+            
+        
+        def __call__(self, model, where):
+            if where != GRB.Callback.MIPNODE:
+                return
+
+            nodecount = model.cbGet(GRB.Callback.MIPNODE_NODCNT)
+            if nodecount > 0:
+                print("Root node completed, terminate now")
+                model.terminate()
+                return solution_values
+
+            # at each cut, we get the solution values
+            if model.cbGet(GRB.Callback.MIPNODE_STATUS) == GRB.Status.OPTIMAL:
+                fixed = model.fixed()
+                self.solution_values = model.cbGetNodeRel(model.getVars())
+                self.var_reduced_cost = fixed.getAttr(GRB.Attr.RC, fixed.getVars())
+                self.const_dualsolution_values = fixed.getAttr(GRB.Attr.Pi, fixed.getConstrs())
+                self.const_basis_status = fixed.getAttr(GRB.Attr.CBasis, fixed.getConstrs())
+                # .getAttr(GRB.Attr.RC)
+    
+    
+    def mycallback_wrapper(model, where, callback=None):
+        return callback(model, where)
+        
+    
+    
+    mycallback = mycallback()
 
     # get output
-    model.optimize()
+    model.optimize(lambda model, where: mycallback_wrapper(model, where, callback=mycallback))
 
     DayAheadBuySellStatusVars = [var for var in model.getVars() if "DayAheadBuySellStatus" in var.varName]
     DayAheadOnOffChargingStatusVars = [var for var in model.getVars() if "DayAheadOnOffChargingStatus" in var.varName]
