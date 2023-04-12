@@ -496,6 +496,7 @@ def get_output_solution(data_dict, model):
 
     data_dict["solution"] = solution_dict
     data_dict["indices"] = indices_dict
+    data_dict["input"] = input_dict
 
     return data_dict
 
