@@ -137,8 +137,8 @@ def get_solution_data(model):
 def get_var_basic_features(model):
     """
     Get the basic features of the variables
-    1. Variable type
-    2. Variable objective coefficient
+    1. Variable objective coefficient
+    2. Variable type
     3. Number of non-zero coefficients in the constraint
 
     Return:
