@@ -16,3 +16,6 @@
 .gitignore
 conanfile.txt
 /instances
+
+# ignore all .DS_Store
+.DS_Store
