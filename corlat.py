@@ -81,14 +81,50 @@ def get_coefficients(model):
     return cost_vectors, rhs
 
 
-def get_solution(model):
+def check_duplicates(lst, drop=True):
+    """
+    This function takes in a list of lists and returns True if there are any duplicates, False otherwise.
+    If drop=True, it also returns a new list of lists with duplicates removed.
+    """
+    arr = np.array(lst)
+    pairwise_comp = np.all(arr[:, np.newaxis, :] == arr[np.newaxis, :, :], axis=-1)
+    duplicates = np.where(np.triu(pairwise_comp, k=1))
+    if duplicates[0].size > 0:
+        if drop:
+            arr_unique = np.delete(arr, duplicates[0], axis=0)
+            return True, arr_unique.tolist()
+        else:
+            return True
+    else:
+        if drop:
+            return False, arr.tolist()
+        else:
+            return False
+
+
+def get_solutions(model):
     """
     Get the solution of the model
     """
-    solution = model.getAttr("X", model.getVars())
-    solution = np.array(solution)
+    solutions = []
+    # solution = model.getAttr("X", model.getVars())
+    sol_count = model.getAttr("SolCount")
+    for i in range(sol_count):
+        model.Params.SolutionNumber = i
+        solution = model.getAttr("Xn", model.getVars())
+        solutions.append(solution)
         
-    return solution
+    # solution = np.array(solution)
+    # create dictionary
+    
+    has_duplicate, unique_solutions = check_duplicates(solutions, drop=True)
+
+    
+    # for each solution, check if there exist the same duplicate (entire array)
+    # if there exist duplicate, remove the duplicate
+    # if there exist no duplicate, keep the solution    
+        
+    return unique_solutions
 
 
 def get_indices(model):
@@ -108,11 +144,12 @@ def get_indices(model):
     return indices
 
 
-def get_solution_dict(solution, indices):
+def get_solution_dict(solutions, indices):
     """
     Get the solution in the form of a dictionary
     """
-    solution_dict = {indices[i]: solution[indices[i]] for i in range(len(indices))}
+    # solution_dict = {indices[i]: solution[indices[i]] for i in range(len(indices))}
+    solution_dict = {i: solutions[i] for i in range(len(solutions))}
     indices_dict = {"indices": indices}
     return solution_dict, indices_dict
 
@@ -121,9 +158,9 @@ def get_solution_data(model):
     """
     Get the solution data of the model
     """
-    solution = get_solution(model)
+    solutions = get_solutions(model)
     indices = get_indices(model)
-    solution_dict, indices_dict = get_solution_dict(solution, indices)
+    solution_dict, indices_dict = get_solution_dict(solutions, indices)
 
     return solution_dict, indices_dict
 
@@ -513,7 +550,7 @@ if __name__ == "__main__":
             # read the file
             model = gb.read("instances/mip/data/COR-LAT/" + file)
             model.Params.PoolSearchMode = 2
-            model.Params.PoolSolutions = 10
+            model.Params.PoolSolutions = 1000
             
             input_dict = get_input_data(model)
 
