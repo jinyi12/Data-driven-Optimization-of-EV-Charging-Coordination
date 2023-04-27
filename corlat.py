@@ -169,7 +169,7 @@ def get_solution_data(model):
     solutions = get_solutions(model)
     indices = get_indices(model)
     
-    has_duplicate, unique_solutions = check_duplicates(solutions[indices], drop=True)
+    has_duplicate, unique_solutions = check_duplicates(solutions, indices, drop=True)
     
     solution_dict, indices_dict = get_solution_dict(solutions, indices)
 
@@ -561,7 +561,7 @@ if __name__ == "__main__":
             # read the file
             model = gb.read("instances/mip/data/COR-LAT/" + file)
             model.Params.PoolSearchMode = 2
-            model.Params.PoolSolutions = 1000
+            model.Params.PoolSolutions = 10000
             
             input_dict = get_input_data(model)
 
