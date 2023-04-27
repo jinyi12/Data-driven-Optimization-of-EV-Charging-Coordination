@@ -512,7 +512,9 @@ if __name__ == "__main__":
             data = {}
             # read the file
             model = gb.read("instances/mip/data/COR-LAT/" + file)
-
+            model.Params.PoolSearchMode = 2
+            model.Params.PoolSolutions = 10
+            
             input_dict = get_input_data(model)
 
             model.optimize()
