@@ -81,13 +81,23 @@ def get_coefficients(model):
     return cost_vectors, rhs
 
 
-def check_duplicates(lst, drop=True):
+def check_duplicates(arr, indices=None, drop=True):
     """
     This function takes in a list of lists and returns True if there are any duplicates, False otherwise.
     If drop=True, it also returns a new list of lists with duplicates removed.
     """
-    arr = np.array(lst)
-    pairwise_comp = np.all(arr[:, np.newaxis, :] == arr[np.newaxis, :, :], axis=-1)
+    
+    # if arr is list of lists, convert to numpy array
+    if isinstance(arr, list):
+        arr = np.array(arr)
+    
+    if indices is not None:
+        indexed_arr = arr[:, indices]
+    
+    else:
+        indexed_arr = arr
+    
+    pairwise_comp = np.all(indexed_arr[:, np.newaxis, :] == indexed_arr[np.newaxis, :, :], axis=-1)
     duplicates = np.where(np.triu(pairwise_comp, k=1))
     if duplicates[0].size > 0:
         if drop:
@@ -114,17 +124,15 @@ def get_solutions(model):
         solution = model.getAttr("Xn", model.getVars())
         solutions.append(solution)
         
-    # solution = np.array(solution)
+    solutions = np.array(solutions)
     # create dictionary
-    
-    has_duplicate, unique_solutions = check_duplicates(solutions, drop=True)
 
     
     # for each solution, check if there exist the same duplicate (entire array)
     # if there exist duplicate, remove the duplicate
     # if there exist no duplicate, keep the solution    
         
-    return unique_solutions
+    return solutions
 
 
 def get_indices(model):
@@ -160,6 +168,9 @@ def get_solution_data(model):
     """
     solutions = get_solutions(model)
     indices = get_indices(model)
+    
+    has_duplicate, unique_solutions = check_duplicates(solutions[indices], drop=True)
+    
     solution_dict, indices_dict = get_solution_dict(solutions, indices)
 
     return solution_dict, indices_dict
