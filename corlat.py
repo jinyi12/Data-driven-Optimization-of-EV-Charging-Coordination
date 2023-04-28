@@ -561,7 +561,7 @@ if __name__ == "__main__":
             # read the file
             model = gb.read("instances/mip/data/COR-LAT/" + file)
             model.Params.PoolSearchMode = 2
-            model.Params.PoolSolutions = 10000
+            model.Params.PoolSolutions = 1000
             
             input_dict = get_input_data(model)
 
