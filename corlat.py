@@ -184,7 +184,7 @@ def get_var_basic_features(model):
     3. Number of non-zero coefficients in the constraint
 
     Return:
-    var_basic_features: np.array of shape (n_variables, 3). Column 1: Variable type, Column 2: Variable objective coefficient, Column 3: Number of non-zero coefficients in the constraint
+    var_basic_features: np.array of shape (n_variables, 3). Column 1: Variable objective coefficient, Column 2: Variable type, Column 3: Number of non-zero coefficients in the constraint
     """
 
     obj = np.array(model.getAttr("Obj", model.getVars()))
