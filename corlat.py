@@ -565,6 +565,18 @@ def get_input_data(model):
 
     return input_dict
 
+
+def get_A_matrix(data_dict, model):
+    """
+    Get the A matrix of the model
+    """
+    A = model.getA()
+    data_dict["A"] = A
+
+    return data_dict
+    
+
+
 def get_output_solution(data_dict, model):
     """
     Get the input data and the solution data of the model
@@ -611,10 +623,11 @@ if __name__ == "__main__":
     # list of all the files in the directory
     config = parse_args()
     dataset = []
-    model_files = os.listdir("instances/mip/data/COR-LAT")
+    
     # model_files = ["cor-lat-2f+r-u-10-10-10-5-100-3.002.b86.000000.prune2.lp"]
     # if argument "--update" is passed, then update the dataset for input data
     if not config["update"]:
+        model_files = os.listdir("instances/mip/data/COR-LAT")
         print("Creating the dataset")
         for i, file in enumerate(model_files):
             
@@ -650,25 +663,30 @@ if __name__ == "__main__":
             
             
 
-    # else:
-    #     print("Routine for updating the dataset")
-    #     print("Reading the dataset")
-    #     # # read the dataset
-    #     with open("Data/corlat/corlat.pickle", "rb") as f:
-    #         dataset = pickle.load(f)
+    else:
+        print("Routine for updating the dataset")
 
-    #     print("Updating the dataset")
-    #     # update the dataset
-    #     for i in tqdm.trange(len(dataset)):           
+        # read processed list of model_files
+        model_files = os.listdir("Data/corlat/instances")
+        file_indices = [int(file.split("_")[1].split(".")[0]) for file in model_files]
+        
+        for i, file in enumerate(model_files):
+            print("Reading the dataset")
+            with open(f"Data/corlat/pickle_raw_data/corlat_{file_indices[i]}" + ".pickle", "rb") as f:
+                data = pickle.load(f)
+            
 
-    #         model = gb.read("instances/mip/data/COR-LAT/" + model_files[i])
 
-    #         dataset[i] = update_input(dataset[i], model)
+            print("Updating the dataset")
 
-    # # save the dataset as a pickle file
-    # with open("Data/corlat/corlat.pickle", "wb") as f:
-    #     pickle.dump(dataset, f)
+            model = gb.read("Data/corlat/instances/" + file)
 
-    # print("Done")
+            # dataset[i] = update_input(dataset[i], model)
+            data = get_A_matrix(data, model)
+
+            with open(f"Data/corlat/pickle_raw_data/corlat_{file_indices[i]}" + ".pickle", "wb") as f:
+                pickle.dump(data, f)
+
+    print("Done")
         
         
