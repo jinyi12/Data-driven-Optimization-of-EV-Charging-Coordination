@@ -13,8 +13,6 @@ import argparse
 import scipy
 import argparse
 import tqdm
-import h5py
-import pyarrow as pa
 
 from sklearn.metrics.pairwise import cosine_similarity
 
@@ -122,7 +120,6 @@ def get_solutions(model):
     # solution = model.getAttr("X", model.getVars())
     sol_count = model.getAttr("SolCount")
     for i in range(sol_count):
-        print("Getting solution: ", i)
         model.Params.SolutionNumber = i
         solution = model.getAttr("Xn", model.getVars())
         solutions.append(solution)
@@ -170,7 +167,6 @@ def get_solution_data(model):
     Get the solution data of the model
     """
     solutions = get_solutions(model)
-    print("Done getting solutions")
     indices = get_indices(model)
     
     has_duplicate, unique_solutions = check_duplicates(solutions, indices, drop=True)
@@ -193,11 +189,11 @@ def get_var_basic_features(model):
 
     obj = np.array(model.getAttr("Obj", model.getVars()))
     variable_types = np.array(model.getAttr("VType", model.getVars()))
-    N_non_zero_coeff_var = scipy.sparse.csr_matrix(model.getA()).getnnz(axis=1)
-
+    N_non_zero_coeff_var = scipy.sparse.csr_matrix(model.getA()).getnnz(axis=0)
+    
     if obj.size == 0:
         print("No variables")
-        return 
+        return None
     
     obj = np.nan_to_num(obj)
     variable_types = np.nan_to_num(variable_types)
@@ -247,52 +243,24 @@ def get_var_LP_features(model):
             return
 
     LP_relaxation_value = np.array(LP_relaxation_value)
-
+    
     if LP_relaxation_value.size == 0:
         print("No variables")
-        return 
+        return None
+        
 
     # is_LP_relaxation_value_fractional = np.array(
     #     [1 if math.modf(x)[0] != 0 else 0 for x in LP_relaxation_value]
     # )
+    
     is_LP_relaxation_value_fractional = np.where(np.modf(LP_relaxation_value)[0] != 0, 1, 0)
 
-    # vectorized version of the following in """
-    """
-    is_LP_relaxation_value_lower_bound = np.array(
-        [
-            1 if x == model.getAttr("LB", model.getVars())[i] else 0
-            for i, x in enumerate(LP_relaxation_value)
-        ]
-    )
-    """
     is_LP_relaxation_value_lower_bound = np.where(LP_relaxation_value == model.getAttr("LB", model.getVars()), 1, 0)
-    
-    # is_LP_relaxation_value_upper_bound = np.array(
-    #     [
-    #         1 if x == model.getAttr("UB", model.getVars())[i] else 0
-    #         for i, x in enumerate(LP_relaxation_value)
-    #     ]
-    # )
     
     is_LP_relaxation_value_upper_bound = np.where(LP_relaxation_value == model.getAttr("UB", model.getVars()), 1, 0)
 
-    # has_lower_bound = np.array(
-    #     [
-    #         1 if model.getAttr("LB", model.getVars())[i] != -gb.GRB.INFINITY else 0
-    #         for i, x in enumerate(LP_relaxation_value)
-    #     ]
-    # )
-    
     lower_bounds = np.array(model.getAttr("LB", model.getVars()))
     has_lower_bound = np.where(lower_bounds != -gb.GRB.INFINITY, 1, 0)
-    
-    # has_upper_bound = np.array(
-    #     [
-    #         1 if model.getAttr("UB", model.getVars())[i] != gb.GRB.INFINITY else 0
-    #         for i, x in enumerate(LP_relaxation_value)
-    #     ]
-    # )
     
     upper_bounds = np.array(model.getAttr("UB", model.getVars()))
     has_upper_bound = np.where(upper_bounds != gb.GRB.INFINITY, 1, 0)
@@ -332,12 +300,11 @@ def get_var_struct_features(model):
 
     A = model.getA().tocsr()
     csc_A = A.tocsc()
-
-    # connected_constraints = [
-    #     A[i, :].nonzero()[1].tolist()
-    #     for i in range(A.shape[0])
-    # ]
     
+    if A.shape[1] == 0:
+        print("No variables")
+        return None
+
     connected_constraints = np.split(A.indices, A.indptr[1:-1])
     
     mean_degree = []
@@ -349,33 +316,11 @@ def get_var_struct_features(model):
     std_coefficient = []
     min_coefficient = []
     max_coefficient = []
-
-    # for i in range(len(connected_constraints)):
-    #     degrees = []
-    #     coefficients = []
-    #     for j in range(len(connected_constraints[i])):
-    #         # degrees.append(A[connected_constraints[i][j], i])
-    #         # print(A[connected_constraints[i][j], :])
-    #         # print(len(A[connected_constraints[i][j], :].nonzero()[0]))
-    #         degrees.append(len(A[connected_constraints[i][j], :].nonzero()[0]))
-    #         coefficients.append(A[connected_constraints[i][j], i])
-
-    #     # if there are no connected constraints, set the values to 0
-    #     if not degrees:
-    #         degrees.append(0)
-    #         coefficients.append(0)
     
     degrees = np.diff(A.indptr)
     non_zero_cons_for_each_var = np.split(csc_A.indices, csc_A.indptr[1:-1])
     coefficients = np.split(csc_A.data, csc_A.indptr[1:-1])
     
-    # for i in range(len(connected_constraints)):
-    #     # compute degrees and coefficients directly from indices
-    #     degrees.append(len(connected_constraints[i]))
-    #     coefficients.append(A[connected_constraints[i]])
-
-
-    # if there are no connected constraints, set the values to 0
     for i in range(len(non_zero_cons_for_each_var)):
         # print("Indices of non zero cons: ", non_zero_cons_for_each_var[i])
         if degrees[non_zero_cons_for_each_var[i]].size == 0:
@@ -413,6 +358,17 @@ def get_var_struct_features(model):
     std_coefficient = np.array(std_coefficient)
     min_coefficient = np.array(min_coefficient)
     max_coefficient = np.array(max_coefficient)
+    
+    print("Shape of mean_degree: ", mean_degree.shape)
+    print("Shape of std_degree: ", std_degree.shape)
+    print("Shape of min_degree: ", min_degree.shape)
+    print("Shape of max_degree: ", max_degree.shape)
+
+    
+    print("Shape of mean_coefficient: ", mean_coefficient.shape)
+    print("Shape of std_coefficient: ", std_coefficient.shape)
+    print("Shape of min_coefficient: ", min_coefficient.shape)
+    print("Shape of max_coefficient: ", max_coefficient.shape)
 
     print("Done getting structural features of the variables")
     
@@ -430,39 +386,6 @@ def get_var_struct_features(model):
         axis=1,
     )
 
-
-# def get_constraints_basic_features(model):
-#     """
-#     Get the basic features of the constraints
-#     1. Constraint type
-#     2. Constraint right-hand side
-#     3. Number of non-zero coefficients in the constraint
-#     4. Cosine similarity with obj (each row of A with cost vector)
-#     """
-
-#     constraint_types = np.array(model.getAttr("Sense", model.getConstrs()))
-#     rhs = np.array(model.getAttr("RHS", model.getConstrs()))
-#     N_non_zero_coeff_constr = scipy.sparse.csr_matrix(model.getA()).getnnz(axis=1)
-
-#     cos_similarity = [
-#         cosine_similarity(
-#             model.getA()[i, :].reshape(1, -1),
-#             np.array(model.getAttr("Obj", model.getVars())).reshape(1, -1),
-#         )
-#         for i in range(model.getA().shape[0])
-#     ]
-#     cos_similarity = np.array(cos_similarity).reshape(-1, 1)
-
-#     return np.concatenate(
-#         (
-#             constraint_types.reshape(-1, 1),
-#             rhs.reshape(-1, 1),
-#             N_non_zero_coeff_constr.reshape(-1, 1),
-#             cos_similarity,
-#         ),
-#         axis=1,
-#     )
-
 def get_constraints_basic_features(model):
     """
     Get the basic features of the constraints
@@ -472,13 +395,8 @@ def get_constraints_basic_features(model):
     4. Cosine similarity with obj (each row of A with cost vector)
     """
 
-    print("Getting the sense")
     constraint_types = np.array(model.getAttr("Sense", model.getConstrs()))
-    
-    print("Getting the RHS")
     rhs = np.array(model.getAttr("RHS", model.getConstrs()))
-    
-    print("Getting the number of non-zero coefficients")
     A = scipy.sparse.csr_matrix(model.getA())
     N_non_zero_coeff_constr = A.getnnz(axis=1)
 
@@ -501,8 +419,6 @@ def get_constraints_basic_features(model):
     print("Computing the cosine similarity")
     cos_similarity = (A_norm @ obj) / obj_norm
 
-    print("Done getting basic features of the constraints")
-    
     return np.stack(
         (
             constraint_types,
@@ -513,60 +429,6 @@ def get_constraints_basic_features(model):
         axis=1,
     )
 
-
-
-# def get_constraints_struct_features(model):
-#     """
-#     Get the structural features of the constraints
-#     1. Mean of coefficients of the variables connected to the constraint
-#     2. Std. deviation of the coefficients of the variables connected to the constraint
-#     3. Min. coefficient of the variables connected to the constraint
-#     4. Max. coefficient of the variables connected to the constraint
-#     5. Sum of norm of absolute values of coefficients of the variable nodes a constraint node is connected to
-#     """
-
-#     A = model.getA()
-
-#     connected_variables = [
-#         scipy.sparse.csr_matrix(A[i, :]).nonzero()[1].tolist()
-#         for i in range(A.shape[0])
-#     ]
-#     mean_coefficient = []
-#     std_coefficient = []
-#     min_coefficient = []
-#     max_coefficient = []
-
-#     sum_norm_abs_coefficient = []
-
-#     for i in range(len(connected_variables)):
-#         coefficients = [
-#             A[i, connected_variables[i][j]]
-#             for j in range(len(connected_variables[i]))
-#         ]
-#         mean_coefficient.append(np.mean(coefficients))
-#         std_coefficient.append(np.std(coefficients))
-#         min_coefficient.append(np.min(coefficients))
-#         max_coefficient.append(np.max(coefficients))
-
-#         sum_norm_abs_coefficient.append(np.sum(np.abs(coefficients)))
-
-#     # convert to numpy array
-#     mean_coefficient = np.array(mean_coefficient)
-#     std_coefficient = np.array(std_coefficient)
-#     min_coefficient = np.array(min_coefficient)
-#     max_coefficient = np.array(max_coefficient)
-#     sum_norm_abs_coefficient = np.array(sum_norm_abs_coefficient)
-
-#     return np.concatenate(
-#         (
-#             mean_coefficient.reshape(-1, 1),
-#             std_coefficient.reshape(-1, 1),
-#             min_coefficient.reshape(-1, 1),
-#             max_coefficient.reshape(-1, 1),
-#             sum_norm_abs_coefficient.reshape(-1, 1),
-#         ),
-#         axis=1,
-#     )
 
 def get_constraints_struct_features(model):
     """
@@ -579,7 +441,7 @@ def get_constraints_struct_features(model):
     """
 
     A = model.getA().tocsr()
-    csc_A = A.to_csc()
+    csc_A = A.tocsc()
 
     mean_coefficient = []
     std_coefficient = []
@@ -618,15 +480,21 @@ def get_constraints_struct_features(model):
     min_coefficient = np.nan_to_num(min_coefficient)
     max_coefficient = np.nan_to_num(max_coefficient)
     sum_norm_abs_coefficient = np.nan_to_num(sum_norm_abs_coefficient)
-
+    
+    print("Shape of mean_coefficient: ", np.array(mean_coefficient).shape)
+    print("Shape of std_coefficient: ", np.array(std_coefficient).shape)
+    print("Shape of min_coefficient: ", np.array(min_coefficient).shape)
+    print("Shape of max_coefficient: ", np.array(max_coefficient).shape)
+    print("Shape of sum_norm_abs_coefficient: ", np.array(sum_norm_abs_coefficient).shape)
+    
     # stack results into a 2D array
     return np.column_stack(
         (
-            mean_coefficient,
+            mean_coefficient, # 1
             std_coefficient,
             min_coefficient,
             max_coefficient,
-            sum_norm_abs_coefficient,
+            sum_norm_abs_coefficient, # 0
         )
     )
 
@@ -645,81 +513,39 @@ def get_input_data(model):
     
     if A.shape[1] == 0:
         print("No variables")
-        return
+        return None
 
     # get basic features of the variables
-    
-    print("----------------------------------------------")
-    print("Getting basic features of the variables")
     var_basic_features = get_var_basic_features(model)
-    
-    print("File size of var basic features: ", sys.getsizeof(var_basic_features)/(1024*1024*1024), " GB")
 
     # get LP features of the variables use get_var_LP_features(model)
-    print("Getting LP features of the variables")
     var_LP_features = get_var_LP_features(model)
-    
-    print("File size of var LP features: ", sys.getsizeof(var_LP_features)/(1024*1024*1024), " GB")
 
     # get structural features of the variables
-    print("Getting structural features of the variables")
     var_struct_features = get_var_struct_features(model)
-    
-    print("File size of var struct features: ", sys.getsizeof(var_struct_features)/(1024*1024*1024), " GB")
 
     # -------------------------------------------------------------
-    
-    print("----------------------------------------------")
 
     # get basic features of the constraints
-    print("Getting basic features of the constraints")
     constraint_basic_features = get_constraints_basic_features(model)
-    
-    print("File size of constraint basic features: ", sys.getsizeof(constraint_basic_features)/(1024*1024*1024), " GB")
 
     # get structural features of the constraints
-    print("Getting structural features of the constraints")
     constraint_struct_features = get_constraints_struct_features(model)
-    
-    print("File size of constraint struct features: ", sys.getsizeof(constraint_struct_features)/(1024*1024*1024), " GB")
 
+    # input_dict = {"A": A}
     input_dict = {}
-    
-    print("Shape of var basic features: ", var_basic_features.shape)
-    print("Shape of var LP features: ", var_LP_features.shape)
-    print("Shape of var struct features: ", var_struct_features.shape)
-    
-    print("----------------------------------------------")
-    
-    print("Shape of constraint basic features: ", constraint_basic_features.shape)
-    print("Shape of constraint struct features: ", constraint_struct_features.shape)
-
-    print("----------------------------------------------")
-    
-    print("Concatenating var node features")
+    print("Shape of var_basic_features: ", var_basic_features.shape)
+    print("Shape of var_LP_features: ", var_LP_features.shape)
+    print("Shape of var_struct_features: ", var_struct_features.shape)
     var_node_features = np.concatenate(
         (var_basic_features, var_LP_features, var_struct_features), axis=1
     )
-    
-    # make pandas dataframe using pyarrow backend
-    arrow_var_node_features = pa.array(var_node_features)
-    
-    # convert to pyarrow table
-    arrow_var_node_features = pa.Table.from_arrays([arrow_var_node_features], names=["var_node_features"])  
-    
-    # save to parquet file
-    pq.write_table(arrow_var_node_features, "var_node_features.parquet")
 
     input_dict["var_node_features"] = var_node_features
 
-    print("Concatenating constraint node features")
     constraint_node_features = np.concatenate(
         (constraint_basic_features, constraint_struct_features), axis=1
     )
-    
-    
-    
-    
     input_dict["constraint_node_features"] = constraint_node_features
 
     # input_dict["cost_vectors"] = cost_vectors
@@ -740,11 +566,6 @@ def get_input_data(model):
     # objective norm is the norm of the cost vector
     # input_dict["cost_vectors"] = input_dict["cost_vectors"] / np.linalg.norm(input_dict["cost_vectors"])
 
-    print("File size of var node features: ", sys.getsizeof(var_node_features)/(1024*1024*1024), " GB")
-    print("File size of constraint node features: ", sys.getsizeof(constraint_node_features)/(1024*1024*1024), " GB")
-    
-    print("File size of input dict: ", sys.getsizeof(input_dict)/(1024*1024*1024), " GB")
-    
     return input_dict
 
 def get_output_solution(data_dict, model):
@@ -752,11 +573,9 @@ def get_output_solution(data_dict, model):
     Get the input data and the solution data of the model
     """
     solution_dict, indices_dict = get_solution_data(model)
-    # input_dict = get_input_data(model)
 
     data_dict["solution"] = solution_dict
     data_dict["indices"] = indices_dict
-    # data_dict["input"] = input_dict
 
     return data_dict
 
@@ -792,61 +611,61 @@ def parse_args():
 if __name__ == "__main__":
     # list of all the files in the directory
     config = parse_args()
-    model_files = os.listdir("instances/mip/data/coordination")
-
+    dataset = []
+    model_files = os.listdir("instances/mip/data/COR-LAT")
+    
+    # model_files = ["cor-lat-2f+r-u-10-10-10-5-100-3.002.b86.000000.prune2.lp"]
     # if argument "--update" is passed, then update the dataset for input data
-    # if not config["update"]:
-    print("Creating the dataset")
-    for i, file in enumerate(model_files):
+    if not config["update"]:
+        print("Creating the dataset")
+        for i, file in enumerate(model_files):
+            
+            data = {}
+            # read the file
+            model = gb.read("instances/mip/data/COR-LAT/" + file)
+            model.Params.PoolSearchMode = 2
+            model.Params.PoolSolutions = 100
+            
+            model_presolved = model.presolve()
+            
+            data = get_input_data(model_presolved)
+            
+            if data is None:
+                continue
+            else:
+                # copy the model file to new directory
+                os.system("cp instances/mip/data/COR-LAT/" + file + " Data/corlat_presolved/instances/")
+                
+                # rename the model file according to the index
+                os.system("mv Data/corlat_presolved/instances/" + file + " Data/corlat_presolved/instances/" + "corlat_presolved_" + str(i) + ".lp")
 
-        data = {}
-        # read the file
-        model = gb.read("instances/mip/data/coordination/" + file)
-        model.Params.PoolSearchMode = 2
-        model.Params.PoolSolutions = 100
+            model.optimize()
 
-        data = get_input_data(model)
-        
-        # with open(f"Data/coordination/coordination_features_{i}.pickle", "wb") as f:
-        #     pickle.dump((var_node_features, constraint_node_features), f)
+            # get data
+            data = get_output_solution(data, model)
 
-        # data["input"] = input_dict
-        
-        if data is None:
-            continue
-        else:
-            # save the model file
-
-        model.optimize()
-
-        # get datasx
-        print("Done optimizing")
-        data = get_output_solution(data, model)
-        print("Done getting output solution")
-
-        # Write the data chunk as a pickle file
-        with open(f"Data/coordination/coordination_{i}.pickle", "wb") as f:
-            pickle.dump(data, f)
+            with open("Data/corlat_presolved/pickle_raw_data/corlat_presolved_" + str(i) + ".pickle", "wb") as f:
+                pickle.dump(data, f)
 
     # else:
     #     print("Routine for updating the dataset")
     #     print("Reading the dataset")
+    #     # # read the dataset
+    #     with open("Data/corlat/corlat.pickle", "rb") as f:
+    #         dataset = pickle.load(f)
+
+    #     print("Updating the dataset")
     #     # update the dataset
-    #     for i in tqdm.trange(len(model_files)):
-    #         with open(f"Data/coordination/coordination_{i}.pickle", "rb") as f:
-    #             data = pickle.load(f)
+    #     for i in tqdm.trange(len(dataset)):           
 
-    #         print("Updating the dataset")
+    #         model = gb.read("instances/mip/data/COR-LAT/" + model_files[i])
 
-    #         model = gb.read("instances/mip/data/coordination/" + model_files[i])
+    #         dataset[i] = update_input(dataset[i], model)
 
-    #         data = update_input(data, model)
+    # # save the dataset as a pickle file
+    # with open("Data/corlat_presolved/corlat_presolved.pickle", "wb") as f:
+    #     pickle.dump(dataset, f)
 
-    #         # Write the updated data chunk as a pickle file
-    #         with open(f"Data/coordination/coordination_{i}.pickle", "wb") as f:
-    #             pickle.dump(data, f)
-
-    print("Done")
-
+    # print("Done")
         
         
