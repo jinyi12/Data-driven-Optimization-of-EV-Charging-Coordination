@@ -582,13 +582,79 @@ def get_output_solution(data_dict, model):
     Get the input data and the solution data of the model
     """
     solution_dict, indices_dict = get_solution_data(model)
+    # convert dictionary of solutions to array of arrays
+    if isinstance(solution_dict, dict):
+        solutions_arr = np.array(list(solution_dict.values()))
+    binary_indices = np.array(indices_dict["indices"])
+    binary_solutions = solutions_arr[:, binary_indices]
+    
+    # get the objective coefficients of the binary variables from the model
+    binary_obj_coeffs = model.getAttr("Obj", model.getVars())[binary_indices]
+    
+    # calculate the feasibility constrain weights
+    current_instance_weight = get_feasibility_constrain_weights(binary_solutions, binary_obj_coeffs)
     # input_dict = get_input_data(model)
 
     data_dict["solution"] = solution_dict
     data_dict["indices"] = indices_dict
+    data_dict["current_instance_weight"] = current_instance_weight
     # data_dict["input"] = input_dict
 
     return data_dict
+
+
+def update_current_instance_weight(data_dict, model):
+    
+    solution_dict = data_dict["solution"]
+    indices_dict = data_dict["indices"]
+    
+    # convert dictionary of solutions to array of arrays
+    if isinstance(solution_dict, dict):
+        solutions_arr = np.array(list(solution_dict.values()))
+    
+    binary_indices = np.array(indices_dict["indices"])
+    binary_solutions = solutions_arr[:, binary_indices]
+    
+    # get the objective coefficients of the binary variables from the model
+    obj_coeffs = np.array(model.getAttr("Obj", model.getVars()))
+    binary_obj_coeffs = obj_coeffs[binary_indices]
+    
+    # calculate the feasibility constrain weights
+    current_instance_weight = get_feasibility_constrain_weights(binary_solutions, binary_obj_coeffs)
+    
+    # print("Current instance weight shape: ", current_instance_weight.shape)
+    
+    # # wait for enter key to continue
+    # input("Press Enter to continue...")
+    
+    data_dict["current_instance_weight"] = current_instance_weight
+    
+    return data_dict
+
+
+
+def get_feasibility_constrain_weights(y_true, obj_coeffs):
+    
+    # # y_true is a tensor of shape (batch_size, (arbritary shape), num_vars)
+    # # convert each array in y_true to a binary array
+    # y_true_binary = []
+    # for i in range(y_true.shape[0]):
+    #     binarized = np.zeros(y_true[i].shape)
+    #     binarized[y_true[i] > 0.5] = 1
+    #     y_true_binary.append(binarized)
+    # y_true_binary = np.array(y_true_binary)
+    
+    # Compute the weights for each training instance
+                    
+    c = obj_coeffs
+    w_ij = np.exp(-np.dot(c, y_true.T))
+
+    sum_w_ij = sum(w_ij)
+    
+    w_ij = w_ij / sum_w_ij
+    
+    return np.array(w_ij)
+        
 
 
 def update_input(data, model):
@@ -604,6 +670,7 @@ def update_input(data, model):
 
 config = {
     "update": False,
+    "update_weights": False,
 }
 
 
@@ -613,6 +680,7 @@ def parse_args():
     """
     parser = argparse.ArgumentParser()
     parser.add_argument("--update", default=config["update"], type=bool)
+    parser.add_argument("--update_weights", default=config["update_weights"], type=bool)
     args = parser.parse_args()
     config.update(vars(args))
 
@@ -683,6 +751,9 @@ if __name__ == "__main__":
 
             # dataset[i] = update_input(dataset[i], model)
             data = get_A_matrix(data, model)
+            
+            if config["update_weights"]:
+                data = update_current_instance_weight(data, model)
 
             with open(f"Data/corlat/pickle_raw_data/corlat_{file_indices[i]}" + ".pickle", "wb") as f:
                 pickle.dump(data, f)

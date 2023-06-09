@@ -568,6 +568,17 @@ def get_input_data(model):
 
     return input_dict
 
+
+def get_A_matrix(data_dict, model):
+    """
+    Get the A matrix of the model
+    """
+    A = model.getA()
+    data_dict["A"] = A
+
+    return data_dict
+    
+
 def get_output_solution(data_dict, model):
     """
     Get the input data and the solution data of the model
@@ -578,6 +589,60 @@ def get_output_solution(data_dict, model):
     data_dict["indices"] = indices_dict
 
     return data_dict
+
+
+def update_current_instance_weight(data_dict, model):
+    
+    solution_dict = data_dict["solution"]
+    indices_dict = data_dict["indices"]
+    
+    # convert dictionary of solutions to array of arrays
+    if isinstance(solution_dict, dict):
+        solutions_arr = np.array(list(solution_dict.values()))
+    
+    binary_indices = np.array(indices_dict["indices"])
+    binary_solutions = solutions_arr[:, binary_indices]
+    
+    # get the objective coefficients of the binary variables from the model
+    obj_coeffs = np.array(model.getAttr("Obj", model.getVars()))
+    binary_obj_coeffs = obj_coeffs[binary_indices]
+    
+    # calculate the feasibility constrain weights
+    current_instance_weight = get_feasibility_constrain_weights(binary_solutions, binary_obj_coeffs)
+    
+    # print("Current instance weight shape: ", current_instance_weight.shape)
+    
+    # # wait for enter key to continue
+    # input("Press Enter to continue...")
+    
+    data_dict["current_instance_weight"] = current_instance_weight
+    
+    return data_dict
+
+
+def get_feasibility_constrain_weights(y_true, obj_coeffs):
+    
+    # # y_true is a tensor of shape (batch_size, (arbritary shape), num_vars)
+    # # convert each array in y_true to a binary array
+    # y_true_binary = []
+    # for i in range(y_true.shape[0]):
+    #     binarized = np.zeros(y_true[i].shape)
+    #     binarized[y_true[i] > 0.5] = 1
+    #     y_true_binary.append(binarized)
+    # y_true_binary = np.array(y_true_binary)
+    
+    # Compute the weights for each training instance
+                    
+    c = obj_coeffs
+    w_ij = np.exp(-np.dot(c, y_true.T))
+
+    sum_w_ij = sum(w_ij)
+    
+    w_ij = w_ij / sum_w_ij
+    
+    return np.array(w_ij)
+        
+
 
 
 def update_input(data, model):
@@ -593,7 +658,9 @@ def update_input(data, model):
 
 config = {
     "update": False,
+    "update_weights": False,
 }
+
 
 
 def parse_args():
@@ -602,21 +669,23 @@ def parse_args():
     """
     parser = argparse.ArgumentParser()
     parser.add_argument("--update", default=config["update"], type=bool)
+    parser.add_argument("--update_weights", default=config["update_weights"], type=bool)
     args = parser.parse_args()
     config.update(vars(args))
 
     return config
 
 
+
 if __name__ == "__main__":
     # list of all the files in the directory
     config = parse_args()
     dataset = []
-    model_files = os.listdir("instances/mip/data/COR-LAT")
     
     # model_files = ["cor-lat-2f+r-u-10-10-10-5-100-3.002.b86.000000.prune2.lp"]
     # if argument "--update" is passed, then update the dataset for input data
     if not config["update"]:
+        model_files = os.listdir("instances/mip/data/COR-LAT")
         print("Creating the dataset")
         for i, file in enumerate(model_files):
             
@@ -647,25 +716,34 @@ if __name__ == "__main__":
             with open("Data/corlat_presolved/pickle_raw_data/corlat_presolved_" + str(i) + ".pickle", "wb") as f:
                 pickle.dump(data, f)
 
-    # else:
-    #     print("Routine for updating the dataset")
-    #     print("Reading the dataset")
-    #     # # read the dataset
-    #     with open("Data/corlat/corlat.pickle", "rb") as f:
-    #         dataset = pickle.load(f)
+    else:
+        print("Routine for updating the dataset")
 
-    #     print("Updating the dataset")
-    #     # update the dataset
-    #     for i in tqdm.trange(len(dataset)):           
+        # read processed list of model_files
+        model_files = os.listdir("Data/corlat_presolved/instances")
+        file_indices = [file.split("_")[2].split(".")[0] for file in model_files]
+        
+        for i, file in enumerate(model_files):
+            print("Reading the dataset")
+            with open(f"Data/corlat_presolved/pickle_raw_data/corlat_presolved_{file_indices[i]}" + ".pickle", "rb") as f:
+                data = pickle.load(f)
+            
 
-    #         model = gb.read("instances/mip/data/COR-LAT/" + model_files[i])
 
-    #         dataset[i] = update_input(dataset[i], model)
+            print("Updating the dataset")
 
-    # # save the dataset as a pickle file
-    # with open("Data/corlat_presolved/corlat_presolved.pickle", "wb") as f:
-    #     pickle.dump(dataset, f)
+            model = gb.read("Data/corlat_presolved/instances/" + file)
 
-    # print("Done")
+            # dataset[i] = update_input(dataset[i], model)
+            data = get_A_matrix(data, model)
+            
+            
+            if config["update_weights"]:
+                data = update_current_instance_weight(data, model)
+
+            with open(f"Data/corlat_presolved/pickle_raw_data/corlat_presolved_{file_indices[i]}" + ".pickle", "wb") as f:
+                pickle.dump(data, f)
+
+    print("Done")
         
         
