@@ -1,6 +1,0 @@
-{
-    "ToTensor": {
-        "device": "cpu",
-        "order": 0
-    }
-}
