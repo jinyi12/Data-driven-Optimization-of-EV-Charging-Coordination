@@ -1,3 +1,13 @@
+"""
+This script is for generating solar scenarios based on each timestep. There is a total of 48 timesteps of 0.5 hour intervals for each solar scenario.
+
+This script includes a scenario reduction step, where the number of scenarios is reduced from 100 to 10. The scenario reduction algorithm used is fast forward selection.
+
+We generate a total of 1000 samples of scenarios and probabilities, and save them into a pickle file.
+
+This script takes in a command line argument for the number of scenarios to be generated. If no argument is given, the default number of scenarios is 100.
+"""
+
 import numpy as np
 import scipy
 import pandas as pd
@@ -15,10 +25,8 @@ if __name__ == "__main__":
     
     if len(sys.argv) > 1:
         nScenarios = int(sys.argv[1])
-        counter = int(float(sys.argv[2]))
     else:
         nScenarios = 100
-        counter = 0
 
     # read data from excel file, and from columns A to E
     df = pd.read_excel(filename, index_col=0, usecols="A:E")
@@ -157,14 +165,11 @@ if __name__ == "__main__":
         scenarios_list.append(scenarios_reduced)
         probabilities_list.append(probabilities_reduced)
 
-    # np.savetxt("Data/scenarios/scenarios_{}.csv".format(counter), scenarios_reduced.T, delimiter=",")
-    # np.savetxt("Data/probabilities/probabilities_{}.csv".format(counter), probabilities_reduced, delimiter=",")
-
     # save the scenarios and probabilities into a dictionary
     scenarios_dict = {}
     scenarios_dict["scenarios"] = scenarios_list
     scenarios_dict["probabilities"] = probabilities_list
 
     # save the dictionary into a pickle file
-    with open("Data/scenarios/1000_scenario_samples.pkl".format(counter), "wb") as f:
+    with open("Data/scenarios/1000_scenario_samples.pkl", "wb") as f:
         pickle.dump(scenarios_dict, f)

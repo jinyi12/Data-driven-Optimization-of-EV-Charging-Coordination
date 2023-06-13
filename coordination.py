@@ -1,3 +1,32 @@
+"""
+This program is used to create the dataset for the EV charging coordination instances.
+
+The dataset is stored in the form of a dictionary, with the following keys:
+1. A: The A matrix of the model
+2. var_node_features: The features of the variable nodes
+3. constraint_node_features: The features of the constraint nodes
+4. solution: The n solutions of the model
+5. indices: The indices of the binary variables
+6. current_instance_weight: The weights for the `n_sols` of the current instance
+
+This program is also used to update the dataset, in case certain keys are missing.
+The program will read the dataset from the pickle file, and update the dataset accordingly.
+
+The program reads the model files from the directory "instances/mip/data/coordination".
+The program will store model files that have solutions in "Data/coordination/instances".
+
+The program does the following in order:
+1. Read the model file
+2. Get the input data of the model via various functions to extract the features from the presolved model
+3. Get the solution data of the model which includes the solutions and the indices of the binary variables
+4. Get the current instance weight of the model
+5. Store the data in the form of a dictionary
+6. Store the dictionary in a pickle file
+
+
+
+"""
+
 import gurobipy as gb
 from gurobipy import GRB
 
@@ -252,47 +281,14 @@ def get_var_LP_features(model):
         print("No variables")
         return 
 
-    # is_LP_relaxation_value_fractional = np.array(
-    #     [1 if math.modf(x)[0] != 0 else 0 for x in LP_relaxation_value]
-    # )
     is_LP_relaxation_value_fractional = np.where(np.modf(LP_relaxation_value)[0] != 0, 1, 0)
 
-    # vectorized version of the following in """
-    """
-    is_LP_relaxation_value_lower_bound = np.array(
-        [
-            1 if x == model.getAttr("LB", model.getVars())[i] else 0
-            for i, x in enumerate(LP_relaxation_value)
-        ]
-    )
-    """
     is_LP_relaxation_value_lower_bound = np.where(LP_relaxation_value == model.getAttr("LB", model.getVars()), 1, 0)
     
-    # is_LP_relaxation_value_upper_bound = np.array(
-    #     [
-    #         1 if x == model.getAttr("UB", model.getVars())[i] else 0
-    #         for i, x in enumerate(LP_relaxation_value)
-    #     ]
-    # )
-    
     is_LP_relaxation_value_upper_bound = np.where(LP_relaxation_value == model.getAttr("UB", model.getVars()), 1, 0)
-
-    # has_lower_bound = np.array(
-    #     [
-    #         1 if model.getAttr("LB", model.getVars())[i] != -gb.GRB.INFINITY else 0
-    #         for i, x in enumerate(LP_relaxation_value)
-    #     ]
-    # )
     
     lower_bounds = np.array(model.getAttr("LB", model.getVars()))
     has_lower_bound = np.where(lower_bounds != -gb.GRB.INFINITY, 1, 0)
-    
-    # has_upper_bound = np.array(
-    #     [
-    #         1 if model.getAttr("UB", model.getVars())[i] != gb.GRB.INFINITY else 0
-    #         for i, x in enumerate(LP_relaxation_value)
-    #     ]
-    # )
     
     upper_bounds = np.array(model.getAttr("UB", model.getVars()))
     has_upper_bound = np.where(upper_bounds != gb.GRB.INFINITY, 1, 0)
@@ -332,11 +328,6 @@ def get_var_struct_features(model):
 
     A = model.getA().tocsr()
     csc_A = A.tocsc()
-
-    # connected_constraints = [
-    #     A[i, :].nonzero()[1].tolist()
-    #     for i in range(A.shape[0])
-    # ]
     
     connected_constraints = np.split(A.indices, A.indptr[1:-1])
     
@@ -349,30 +340,10 @@ def get_var_struct_features(model):
     std_coefficient = []
     min_coefficient = []
     max_coefficient = []
-
-    # for i in range(len(connected_constraints)):
-    #     degrees = []
-    #     coefficients = []
-    #     for j in range(len(connected_constraints[i])):
-    #         # degrees.append(A[connected_constraints[i][j], i])
-    #         # print(A[connected_constraints[i][j], :])
-    #         # print(len(A[connected_constraints[i][j], :].nonzero()[0]))
-    #         degrees.append(len(A[connected_constraints[i][j], :].nonzero()[0]))
-    #         coefficients.append(A[connected_constraints[i][j], i])
-
-    #     # if there are no connected constraints, set the values to 0
-    #     if not degrees:
-    #         degrees.append(0)
-    #         coefficients.append(0)
     
     degrees = np.diff(A.indptr)
     non_zero_cons_for_each_var = np.split(csc_A.indices, csc_A.indptr[1:-1])
     coefficients = np.split(csc_A.data, csc_A.indptr[1:-1])
-    
-    # for i in range(len(connected_constraints)):
-    #     # compute degrees and coefficients directly from indices
-    #     degrees.append(len(connected_constraints[i]))
-    #     coefficients.append(A[connected_constraints[i]])
 
 
     # if there are no connected constraints, set the values to 0
@@ -429,39 +400,7 @@ def get_var_struct_features(model):
         ),
         axis=1,
     )
-
-
-# def get_constraints_basic_features(model):
-#     """
-#     Get the basic features of the constraints
-#     1. Constraint type
-#     2. Constraint right-hand side
-#     3. Number of non-zero coefficients in the constraint
-#     4. Cosine similarity with obj (each row of A with cost vector)
-#     """
-
-#     constraint_types = np.array(model.getAttr("Sense", model.getConstrs()))
-#     rhs = np.array(model.getAttr("RHS", model.getConstrs()))
-#     N_non_zero_coeff_constr = scipy.sparse.csr_matrix(model.getA()).getnnz(axis=1)
-
-#     cos_similarity = [
-#         cosine_similarity(
-#             model.getA()[i, :].reshape(1, -1),
-#             np.array(model.getAttr("Obj", model.getVars())).reshape(1, -1),
-#         )
-#         for i in range(model.getA().shape[0])
-#     ]
-#     cos_similarity = np.array(cos_similarity).reshape(-1, 1)
-
-#     return np.concatenate(
-#         (
-#             constraint_types.reshape(-1, 1),
-#             rhs.reshape(-1, 1),
-#             N_non_zero_coeff_constr.reshape(-1, 1),
-#             cos_similarity,
-#         ),
-#         axis=1,
-#     )
+    
 
 def get_constraints_basic_features(model):
     """
@@ -514,60 +453,6 @@ def get_constraints_basic_features(model):
     )
 
 
-
-# def get_constraints_struct_features(model):
-#     """
-#     Get the structural features of the constraints
-#     1. Mean of coefficients of the variables connected to the constraint
-#     2. Std. deviation of the coefficients of the variables connected to the constraint
-#     3. Min. coefficient of the variables connected to the constraint
-#     4. Max. coefficient of the variables connected to the constraint
-#     5. Sum of norm of absolute values of coefficients of the variable nodes a constraint node is connected to
-#     """
-
-#     A = model.getA()
-
-#     connected_variables = [
-#         scipy.sparse.csr_matrix(A[i, :]).nonzero()[1].tolist()
-#         for i in range(A.shape[0])
-#     ]
-#     mean_coefficient = []
-#     std_coefficient = []
-#     min_coefficient = []
-#     max_coefficient = []
-
-#     sum_norm_abs_coefficient = []
-
-#     for i in range(len(connected_variables)):
-#         coefficients = [
-#             A[i, connected_variables[i][j]]
-#             for j in range(len(connected_variables[i]))
-#         ]
-#         mean_coefficient.append(np.mean(coefficients))
-#         std_coefficient.append(np.std(coefficients))
-#         min_coefficient.append(np.min(coefficients))
-#         max_coefficient.append(np.max(coefficients))
-
-#         sum_norm_abs_coefficient.append(np.sum(np.abs(coefficients)))
-
-#     # convert to numpy array
-#     mean_coefficient = np.array(mean_coefficient)
-#     std_coefficient = np.array(std_coefficient)
-#     min_coefficient = np.array(min_coefficient)
-#     max_coefficient = np.array(max_coefficient)
-#     sum_norm_abs_coefficient = np.array(sum_norm_abs_coefficient)
-
-#     return np.concatenate(
-#         (
-#             mean_coefficient.reshape(-1, 1),
-#             std_coefficient.reshape(-1, 1),
-#             min_coefficient.reshape(-1, 1),
-#             max_coefficient.reshape(-1, 1),
-#             sum_norm_abs_coefficient.reshape(-1, 1),
-#         ),
-#         axis=1,
-#     )
-
 def get_constraints_struct_features(model):
     """
     Get the structural features of the constraints
@@ -603,14 +488,6 @@ def get_constraints_struct_features(model):
         min_coefficient.append(np.min(coefficients[i]))
         max_coefficient.append(np.max(coefficients[i]))
         sum_norm_abs_coefficient.append(np.sum(np.abs(coefficients[i])))
-    
-    # for i in range(A.shape[0]):
-    #     coefficients = A.data[A.indptr[i]:A.indptr[i+1]]
-    #     mean_coefficient[i] = np.mean(coefficients)
-    #     std_coefficient[i] = np.std(coefficients)
-    #     min_coefficient[i] = np.min(coefficients)
-    #     max_coefficient[i] = np.max(coefficients)
-    #     sum_norm_abs_coefficient[i] = np.sum(np.abs(coefficients))
         
     # for NaN values, replace with 0
     mean_coefficient = np.nan_to_num(mean_coefficient)
@@ -683,7 +560,7 @@ def get_input_data(model):
     
     print("File size of constraint struct features: ", sys.getsizeof(constraint_struct_features)/(1024*1024*1024), " GB")
 
-    input_dict = {}
+    input_dict = {"A": A}
     
     print("Shape of var basic features: ", var_basic_features.shape)
     print("Shape of var LP features: ", var_LP_features.shape)
@@ -700,65 +577,99 @@ def get_input_data(model):
     var_node_features = np.concatenate(
         (var_basic_features, var_LP_features, var_struct_features), axis=1
     )
-    
-    # make pandas dataframe using pyarrow backend
-    arrow_var_node_features = pa.array(var_node_features)
-    
-    # convert to pyarrow table
-    arrow_var_node_features = pa.Table.from_arrays([arrow_var_node_features], names=["var_node_features"])  
-    
-    # save to parquet file
-    pq.write_table(arrow_var_node_features, "var_node_features.parquet")
 
     input_dict["var_node_features"] = var_node_features
 
     print("Concatenating constraint node features")
     constraint_node_features = np.concatenate(
         (constraint_basic_features, constraint_struct_features), axis=1
-    )
-    
-    
+    )   
     
     
     input_dict["constraint_node_features"] = constraint_node_features
-
-    # input_dict["cost_vectors"] = cost_vectors
-    # input_dict["rhs"] = rhs
-
-    # variable_features = get_variable_features(model)
-
-    # coefficients of the constraint is just a row of A
-    # normalize the coefficients of the constraint by dividing each coefficient with the row norm of A
-
-    # row_norm = scipy.sparse.linalg.norm(input_dict["A"], axis=1)[:, None]
-    # input_dict["A"] = input_dict["A"] / row_norm
-
-    # basically bias is normalized by dividing each bias with its respective row norm of A
-    # input_dict["rhs"] = input_dict["rhs"] / row_norm.squueze()
-
-    # coefficients for the variable nodes (which are cost vectors) are normalized by objective norm
-    # objective norm is the norm of the cost vector
-    # input_dict["cost_vectors"] = input_dict["cost_vectors"] / np.linalg.norm(input_dict["cost_vectors"])
-
-    print("File size of var node features: ", sys.getsizeof(var_node_features)/(1024*1024*1024), " GB")
-    print("File size of constraint node features: ", sys.getsizeof(constraint_node_features)/(1024*1024*1024), " GB")
-    
-    print("File size of input dict: ", sys.getsizeof(input_dict)/(1024*1024*1024), " GB")
     
     return input_dict
+
+
+def get_A_matrix(data_dict, model):
+    """
+    Get the A matrix of the model
+    """
+    A = model.getA()
+    data_dict["A"] = A
+
+    return data_dict
+
 
 def get_output_solution(data_dict, model):
     """
     Get the input data and the solution data of the model
     """
     solution_dict, indices_dict = get_solution_data(model)
-    # input_dict = get_input_data(model)
+    
+    # convert dictionary of solutions to array of arrays
+    if isinstance(solution_dict, dict):
+        solutions_arr = np.array(list(solution_dict.values()))
+    binary_indices = np.array(indices_dict["indices"])
+    binary_solutions = solutions_arr[:, binary_indices]
+    
+    # get the objective coefficients of the binary variables from the model
+    binary_obj_coeffs = model.getAttr("Obj", model.getVars())[binary_indices]
+    
+    # calculate the feasibility constrain weights
+    current_instance_weight = get_feasibility_constrain_weights(binary_solutions, binary_obj_coeffs)
 
     data_dict["solution"] = solution_dict
     data_dict["indices"] = indices_dict
-    # data_dict["input"] = input_dict
+    
+    data_dict["current_instance_weight"] = current_instance_weight
+    
 
     return data_dict
+
+
+def update_current_instance_weight(data_dict, model):
+    
+    solution_dict = data_dict["solution"]
+    indices_dict = data_dict["indices"]
+    
+    # convert dictionary of solutions to array of arrays
+    if isinstance(solution_dict, dict):
+        solutions_arr = np.array(list(solution_dict.values()))
+    
+    binary_indices = np.array(indices_dict["indices"])
+    binary_solutions = solutions_arr[:, binary_indices]
+    
+    # get the objective coefficients of the binary variables from the model
+    obj_coeffs = np.array(model.getAttr("Obj", model.getVars()))
+    binary_obj_coeffs = obj_coeffs[binary_indices]
+    
+    # calculate the feasibility constrain weights
+    current_instance_weight = get_feasibility_constrain_weights(binary_solutions, binary_obj_coeffs)
+    
+    # print("Current instance weight shape: ", current_instance_weight.shape)
+    
+    # # wait for enter key to continue
+    # input("Press Enter to continue...")
+    
+    data_dict["current_instance_weight"] = current_instance_weight
+    
+    return data_dict
+
+
+def get_feasibility_constrain_weights(y_true, obj_coeffs):
+    
+    # y_true is an array of shape ((arbritary number of solutions), num_vars)
+    # Compute the weights for each training instance
+                    
+    c = obj_coeffs
+    w_ij = np.exp(-np.dot(c, y_true.T))
+
+    sum_w_ij = sum(w_ij)
+    
+    w_ij = w_ij / sum_w_ij
+    
+    return np.array(w_ij)
 
 
 def update_input(data, model):
@@ -792,59 +703,71 @@ def parse_args():
 if __name__ == "__main__":
     # list of all the files in the directory
     config = parse_args()
-    model_files = os.listdir("instances/mip/data/coordination")
+    
+    if not config["update"]:
+        model_files = os.listdir("instances/mip/data/coordination")
 
-    # if argument "--update" is passed, then update the dataset for input data
-    # if not config["update"]:
-    print("Creating the dataset")
-    for i, file in enumerate(model_files):
+        # if argument "--update" is passed, then update the dataset for input data
+        # if not config["update"]:
+        print("Creating the dataset")
+        for i, file in enumerate(model_files):
 
-        data = {}
-        # read the file
-        model = gb.read("instances/mip/data/coordination/" + file)
-        model.Params.PoolSearchMode = 2
-        model.Params.PoolSolutions = 100
+            data = {}
+            # read the file
+            model = gb.read("instances/mip/data/coordination/" + file)
+            model.Params.PoolSearchMode = 2
+            model.Params.PoolSolutions = 100
+            
+            model_presolved = model.presolve()
 
-        data = get_input_data(model)
-        
-        # with open(f"Data/coordination/coordination_features_{i}.pickle", "wb") as f:
-        #     pickle.dump((var_node_features, constraint_node_features), f)
+            data = get_input_data(model_presolved)
 
-        # data["input"] = input_dict
-        
-        if data is None:
-            continue
-        else:
-            # save the model file
+            if data is None:
+                continue
+            # copy the model file to new directory
+            os.system("cp instances/mip/data/coordination/" + file + " Data/coordination_presolved/instances/")
 
-        model.optimize()
+            # rename the model file according to the index
+            os.system("mv Data/coordination_presolved/instances/" + file + " Data/coordination_presolved/instances/" + "coordination_presolved" + str(i) + ".lp")
 
-        # get datasx
-        print("Done optimizing")
-        data = get_output_solution(data, model)
-        print("Done getting output solution")
+            model.optimize()
 
-        # Write the data chunk as a pickle file
-        with open(f"Data/coordination/coordination_{i}.pickle", "wb") as f:
-            pickle.dump(data, f)
+            # get datasx
+            print("Done optimizing")
+            data = get_output_solution(data, model)
+            print("Done getting output solution")
 
-    # else:
-    #     print("Routine for updating the dataset")
-    #     print("Reading the dataset")
-    #     # update the dataset
-    #     for i in tqdm.trange(len(model_files)):
-    #         with open(f"Data/coordination/coordination_{i}.pickle", "rb") as f:
-    #             data = pickle.load(f)
+            # Write the data chunk as a pickle file
+            with open(f"Data/coordination_presolved/pickle_raw_data/coordination_presolved_{str(i)}.pickle", "wb") as f:
+                pickle.dump(data, f)
 
-    #         print("Updating the dataset")
+    else:
+        print("Routine for updating the dataset")
 
-    #         model = gb.read("instances/mip/data/coordination/" + model_files[i])
+        # read processed list of model_files
+        model_files = os.listdir("Data/coordination_presolved/instances")
+        file_indices = [file.split("_")[2].split(".")[0] for file in model_files]
 
-    #         data = update_input(data, model)
+        for i, file in enumerate(model_files):
+            print("Reading the dataset")
+            with open(f"Data/coordination_presolved/pickle_raw_data/coordination_presolved_{file_indices[i]}.pickle", "rb") as f:
+                data = pickle.load(f)
 
-    #         # Write the updated data chunk as a pickle file
-    #         with open(f"Data/coordination/coordination_{i}.pickle", "wb") as f:
-    #             pickle.dump(data, f)
+
+
+            print("Updating the dataset")
+
+            model = gb.read("Data/coordination_presolved/instances/" + file)
+
+            # dataset[i] = update_input(dataset[i], model)
+            data = get_A_matrix(data, model)
+
+
+            if config["update_weights"]:
+                data = update_current_instance_weight(data, model)
+
+            with open(f"Data/coordination_presolved/pickle_raw_data/coordination_presolved_{file_indices[i]}.pickle", "wb") as f:
+                pickle.dump(data, f)
 
     print("Done")
 

@@ -1,3 +1,33 @@
+"""
+This program is used to create the dataset for the *corlat* instances.
+
+The dataset is stored in the form of a dictionary, with the following keys:
+1. A: The A matrix of the model
+2. var_node_features: The features of the variable nodes
+3. constraint_node_features: The features of the constraint nodes
+4. solution: The n solutions of the model
+5. indices: The indices of the binary variables
+6. current_instance_weight: The weights for the `n_sols` of the current instance
+
+This program is also used to update the dataset, in case certain keys are missing.
+The program will read the dataset from the pickle file, and update the dataset accordingly.
+
+The program reads the model files from the directory "instances/mip/data/COR-LAT".
+The program will store model files that have solutions in "Data/corlat/instances".
+
+The program does the following in order:
+1. Read the model file
+2. Get the input data of the model via various functions to extract the features from the presolved model
+3. Get the solution data of the model which includes the solutions and the indices of the binary variables
+4. Get the current instance weight of the model
+5. Store the data in the form of a dictionary
+6. Store the dictionary in a pickle file
+
+The stored pickle file will be undergoing preprocessing in the file "preprocess_corlat.py".
+
+"""
+
+
 import gurobipy as gb
 from gurobipy import GRB
 
@@ -532,8 +562,7 @@ def get_input_data(model):
     # get structural features of the constraints
     constraint_struct_features = get_constraints_struct_features(model)
 
-    # input_dict = {"A": A}
-    input_dict = {}
+    input_dict = {"A": A}
     var_node_features = np.concatenate(
         (var_basic_features, var_LP_features, var_struct_features), axis=1
     )
@@ -598,7 +627,6 @@ def get_output_solution(data_dict, model):
     data_dict["solution"] = solution_dict
     data_dict["indices"] = indices_dict
     data_dict["current_instance_weight"] = current_instance_weight
-    # data_dict["input"] = input_dict
 
     return data_dict
 
@@ -655,17 +683,6 @@ def get_feasibility_constrain_weights(y_true, obj_coeffs):
     
     return np.array(w_ij)
         
-
-
-def update_input(data, model):
-    """
-    Update the data with the new model
-    """
-    input_dict = get_input_data(model)
-
-    data["input"] = input_dict
-
-    return data
 
 
 config = {
