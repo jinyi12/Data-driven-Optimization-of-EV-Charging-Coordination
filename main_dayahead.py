@@ -1,3 +1,29 @@
+"""
+The following script is the implementation of the Day-Ahead EV charging scheduling, adapted from the paper:
+https://doi.org/10.1109/TSG.2015.2424912
+
+The problem is formulated as a two-stage stochastic programming problem, where the first stage is the Day-Ahead
+scheduling, and the second stage is the real-time scheduling. We did not implement the real-time scheduling in this project.
+The Day-Ahead scheduling is solved using the Gurobi solver.
+
+The SOC constraints of the paper are modified. We used the following SOC constraints:
+    1. SOC[s, i, t] == SOC_vec[i] for t <= tHin[i]
+    2. SOC[s, i, t] == SOC[s, i, t - 1] + DayAheadChargingPower[s, i, t] * timeInterval / BatteryCapacity[i] for t > tHin[i] and t <= tHout[i]
+    3. SOC[s, i, t] == SOC[s, i, tHout[i]] for t > tHout[i]
+    4. SOC[s, i, tHin[i]] + DayAheadChargingPower.sum(s, i, "*") * timeInterval / BatteryCapacity[i] == 1
+
+These SOC constraints specify:
+    1. The initial SOC of each EV is equal to the SOC_vec[i]
+    2. The SOC of each EV increases by the charging power * timeInterval / BatteryCapacity[i] when the EV is charging
+    3. The SOC of each EV is equal to the SOC of the EV at the time of departure beyond the time of departure
+    4. The sum of the charging power supplied to each EV, plus the initial SOC of each EV is equal to 1
+    
+In addition, the charging power output product with a binary variable is linearized.
+
+The utility grid power output constraint product with the BuySell binary variable is also linearized.
+
+"""
+
 import gurobipy as gb
 from gurobipy import GRB
 
@@ -23,7 +49,6 @@ def parse_args():
     "Overriding default argments"
     argparser = argparse.ArgumentParser(description='Parse args for solver')
     argparser.add_argument('--input_file', type=str, default=default_config.input_file, help='input file')
-    argparser.add_argument('--input_file_single', type=str, default=default_config.input_file_single, help='input file single')
     argparser.add_argument('--solve_batch', type=bool, default=default_config.solve_batch, help='solve batch')
     
     args = argparser.parse_args()
@@ -39,13 +64,8 @@ if __name__ == "__main__":
 
     # read the input file
     DayAheadSolarOutput = pd.read_csv(input_file, header=None).to_numpy()
-
-    mean_in = 8
-    std_in = 1
-    mean_out = 16
-    std_out = 1
-
-    nbScenarios = 1
+    
+    nbScenarios = 100
 
 
     model: gb.Model = gb.Model("coordination")
@@ -61,7 +81,10 @@ if __name__ == "__main__":
     nbTime = 48
     timeInterval = 0.5
 
+    # maximum utility grid power output, in kW
     Gamma = 100000
+    
+    # small number to avoid division by zero
     Epsilon = 0.00001
 
     # maximum charging power of each EV, in kW, using level 2 charging
@@ -508,6 +531,7 @@ if __name__ == "__main__":
                 DayAheadUtilityPowerOutput[s, t],
                 -prob[s] * (TOUSellPrice[t] * timeInterval),
             )
+            
             expr_RHatCharging.add(
                 -DayAheadUtilityPowerOutputLinearizedPurchase[s, t],
                 -prob[s] * (TOUSellPrice[t] * timeInterval),
@@ -533,109 +557,8 @@ if __name__ == "__main__":
     # get the coefficients of the objective function
     cost_vectors = model.getAttr("Obj", model.getVars())
     cost_vectors = np.array(cost_vectors)
-    
-    class mycallback():
-        """docstring for mycallback."""
-        def __init__(self):
-            super(mycallback, self).__init__()
-            self.var_solution_values = None
-            self.var_reduced_cost = None
-            
-            self.const_dualsolution_values = None
-            self.const_basis_status = None
-            
-        
-        def __call__(self, model, where):
-            if where != GRB.Callback.MIPNODE:
-                return
-
-            nodecount = model.cbGet(GRB.Callback.MIPNODE_NODCNT)
-            if nodecount > 0:
-                print("Root node completed, terminate now")
-                model.terminate()
-                return solution_values
-
-            # at each cut, we get the solution values
-            if model.cbGet(GRB.Callback.MIPNODE_STATUS) == GRB.Status.OPTIMAL:
-                fixed = model.fixed()
-                self.solution_values = model.cbGetNodeRel(model.getVars())
-                self.var_reduced_cost = fixed.getAttr(GRB.Attr.RC, fixed.getVars())
-                self.const_dualsolution_values = fixed.getAttr(GRB.Attr.Pi, fixed.getConstrs())
-                self.const_basis_status = fixed.getAttr(GRB.Attr.CBasis, fixed.getConstrs())
-                # .getAttr(GRB.Attr.RC)
-    
-    
-    def mycallback_wrapper(model, where, callback=None):
-        return callback(model, where)
-        
-    
-    
-    mycallback = mycallback()
 
     # get output
-    model.optimize(lambda model, where: mycallback_wrapper(model, where, callback=mycallback))
+    model.optimize()
 
-    DayAheadBuySellStatusVars = [var for var in model.getVars() if "DayAheadBuySellStatus" in var.varName]
-    DayAheadOnOffChargingStatusVars = [var for var in model.getVars() if "DayAheadOnOffChargingStatus" in var.varName]
-    DayAheadChargingPowerVars = [var for var in model.getVars() if "DayAheadChargingPower" in var.varName]
-    DayAheadUtilityPowerOutputVars = [var for var in model.getVars() if "DayAheadUtilityPowerOutput" in var.varName]
-    SOCVars = [var for var in model.getVars() if "SOC" in var.varName]
-
-    output_vars = [DayAheadBuySellStatusVars, DayAheadOnOffChargingStatusVars, DayAheadChargingPowerVars, DayAheadUtilityPowerOutputVars]
-
-    # get the solution for each variable above
-    DayAheadBuySellStatusSolution = model.getAttr("X", DayAheadBuySellStatusVars)
-    DayAheadOnOffChargingStatusSolution = model.getAttr("X", DayAheadOnOffChargingStatusVars)
-    DayAheadChargingPowerSolution = model.getAttr("X", DayAheadChargingPowerVars)
-    DayAheadUtilityPowerOutputSolution = model.getAttr("X", DayAheadUtilityPowerOutputVars)
-    SOCSolution = model.getAttr("X", SOCVars)
-
-    DayAheadBuySellStatusIndices = [var.index for var in DayAheadBuySellStatusVars]
-    DayAheadOnOffChargingStatusIndices = [var.index for var in DayAheadOnOffChargingStatusVars]
-    DayAheadChargingPowerIndices = [var.index for var in DayAheadChargingPowerVars]
-    DayAheadUtilityPowerOutputIndices = [var.index for var in DayAheadUtilityPowerOutputVars]
-    SOCIndices = [var.index for var in SOCVars]
-
-    # concatenate the solution without SOC
-    output = np.concatenate((DayAheadBuySellStatusSolution, DayAheadOnOffChargingStatusSolution))
-
-    solution_dict = dict()
-    solution_dict["DayAheadBuySellStatus"] = DayAheadBuySellStatusSolution
-    solution_dict["DayAheadOnOffChargingStatus"] = DayAheadOnOffChargingStatusSolution
-    solution_dict["DayAheadChargingPower"] = DayAheadChargingPowerSolution
-    solution_dict["DayAheadUtilityPowerOutput"] = DayAheadUtilityPowerOutputSolution
-    solution_dict["SOC"] = SOCSolution
-    solution_dict["output"] = output
-
-    indices_dict = dict()
-    indices_dict["DayAheadBuySellStatus"] = DayAheadBuySellStatusIndices
-    indices_dict["DayAheadOnOffChargingStatus"] = DayAheadOnOffChargingStatusIndices
-    indices_dict["DayAheadChargingPower"] = DayAheadChargingPowerIndices
-    indices_dict["DayAheadUtilityPowerOutput"] = DayAheadUtilityPowerOutputIndices
-    indices_dict["SOC"] = SOCIndices
-
-    # print the shape of the solution
-    print("target shape", output.shape)
-
-    # write solution_dict to a file
-    with open(current_path + "/Data/output/solution_dict_" + fileNumber + ".pkl", "wb") as f:
-        pickle.dump(solution_dict, f)
-
-    # write indices_dict to a file
-    with open(current_path + "/Data/output/indices_dict" + ".pkl", "wb") as f:
-        pickle.dump(indices_dict, f)
-    
-    # input dictionary
-    input_dict = dict()
-    input_dict["A"] = A
-    input_dict["b"] = rhs
-    input_dict["c"] = cost_vectors
-
-    print("A shape", A.shape)
-    print("b shape", rhs.shape)
-    print("c shape", cost_vectors.shape)
-
-    # write input_dict to a file
-    with open(current_path + "/Data/output/input_dict_" + fileNumber + ".pkl", "wb") as f:
-        pickle.dump(input_dict, f)
     

@@ -1,3 +1,7 @@
+// initial cpp version of day-ahead forecast model.
+// This script is only for reference, and it is not used in the final version of the data-driven day-ahead forecast model.
+// Please refer to the python version of the day-ahead forecast model for the final version.
+
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
@@ -45,15 +49,6 @@ int main(int argc, char *argv[]) {
   std::string input_file = argv[1];
 
   cout << "Input file: " << input_file << endl;
-
-  std::mt19937 rng;
-
-  double mean_in = 8;
-  double std_in = 1;
-  double mean_out = 16;
-  double std_out = 1;
-
-  std::normal_distribution<double> norm_dist_SOC(0.6, 0.1);
 
   int nbScenarios = 100;
 
