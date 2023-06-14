@@ -68,13 +68,7 @@ if __name__ == "__main__":
         DayAheadSolarOutput = np.array(all_scenarios["scenarios"][n_scenario]).T
         print(DayAheadSolarOutput.shape)
 
-        mean_in = 8
-        std_in = 1
-        mean_out = 16
-        std_out = 1
-
         nbScenarios = 10
-
 
         model: gb.Model = gb.Model("coordination")
 
@@ -89,8 +83,8 @@ if __name__ == "__main__":
         # nbTime = 48
         # timeInterval = 0.5
         
-        nbTime = 24
-        timeInterval = 1
+        nbTime = 48
+        timeInterval = 0.5
 
         Gamma = 100000
         Epsilon = 0.00001
