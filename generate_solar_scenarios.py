@@ -8,6 +8,7 @@ We generate a total of 1000 samples of scenarios and probabilities, and save the
 This script takes in a command line argument for the number of scenarios to be generated. If no argument is given, the default number of scenarios is 100.
 """
 
+
 import numpy as np
 import scipy
 import pandas as pd
@@ -22,12 +23,8 @@ if __name__ == "__main__":
     filename = "Data/Irradiance_39.xlsx"
 
     # takes in command line argument for nScenarios
-    
-    if len(sys.argv) > 1:
-        nScenarios = int(sys.argv[1])
-    else:
-        nScenarios = 100
 
+    nScenarios = int(sys.argv[1]) if len(sys.argv) > 1 else 100
     # read data from excel file, and from columns A to E
     df = pd.read_excel(filename, index_col=0, usecols="A:E")
 
@@ -51,7 +48,7 @@ if __name__ == "__main__":
 
     # %%
     #  for each group, fit a beta distribution to the data
-    for i, (name, group) in enumerate(df.groupby("Time")):
+    for name, group in df.groupby("Time"):
         # clear a, b , loc, scale
         a, b, loc, scale = None, None, None, None
         max_x = max(group["Ghi Curr Day"])
@@ -62,12 +59,12 @@ if __name__ == "__main__":
             # fit a beta distribution to the data
 
             a, b, loc, scale = scipy.stats.beta.fit(group["Ghi Curr Day"]) 
-        
+
 
     # %%
     #  for each group, if a beta distribution is fitted, set fitted flag of dictionary to True
     fit_dict = {}
-    for i, (name, group) in enumerate (df.groupby("Time")):
+    for name, group in df.groupby("Time"):
         fit_dict[name] = {}
         # clear a, b , loc, scale
         a, b, loc, scale = None, None, None, None
@@ -77,7 +74,7 @@ if __name__ == "__main__":
         x = np.linspace(0, max_x + 1*std_x, 2000)
         # normalize group["Ghi Curr Day"] which is the irradiance
         # normalized_irradiance = (group["Ghi Curr Day"] - min_x) / (max_x - min_x)
-        
+
         # if the group contains only zeros, skip it
         if group["Ghi Curr Day"].sum() > 0:
             # fit a beta distribution to the data
@@ -91,13 +88,9 @@ if __name__ == "__main__":
             fit_dict[name]["params"] = [None, None, None, None]
 
 
-    # %%
-    # turn df into scenarios of Ghi Curr Day, 48 time intervals
-
-    T_irradiance_list = []
-    for i, (name, group) in enumerate(df.groupby("Time")):
-        T_irradiance_list.append(group["Ghi Curr Day"].values)
-
+    T_irradiance_list = [
+        group["Ghi Curr Day"].values for name, group in df.groupby("Time")
+    ]
     # turn T_irradiance list into a 2d array 
     T_irradiance = np.array(T_irradiance_list)
 
@@ -118,15 +111,15 @@ if __name__ == "__main__":
     nSamples = 1000
 
     # %%
-    
+
     for i in range(nSamples):
-    
+
         # for each time interval, use the corresponding distribution to sample 10 points, equivalent to 10 scenario
         # Add the samples into a numpy array
         scenarios = np.zeros((48, nScenarios)) # 48 time intervals, 100 scenarios
-        # fig, axes = plt.subplots(12, 4, figsize=(20, 15))
+        
         for i, (name, group) in enumerate(df.groupby("Time")):
-            # ax = axes[i // 4, i % 4]
+        
             # if the group contains only zeros, skip it
             if group["Ghi Curr Day"].sum() > 0:
                 # get the parameters of the fitted distribution
@@ -142,17 +135,11 @@ if __name__ == "__main__":
                     # resample the points
                     samples[idx] = scipy.stats.beta.rvs(a, b, loc, scale, size=len(idx))
                     
-
-                # add the samples to the scenarios array
-                scenarios[i] = samples
-                # plot the histogram of the sampled points
-                # ax.hist(samples, bins='auto', density=True)
-                # ax.set_title(name)
             else:
                 # sample zeros instead
                 samples = np.zeros(nScenarios)
-                scenarios[i] = samples 
-        
+            # add the samples to the scenarios array
+            scenarios[i] = samples
         # scale the scenarios to the original irradiance range, and convert to kW by multiplying 0.0005
         for i in range(48):
             scenarios[i] = scenarios[i] * (max_irradiance - min_irradiance) + min_irradiance
@@ -166,10 +153,10 @@ if __name__ == "__main__":
         probabilities_list.append(probabilities_reduced)
 
     # save the scenarios and probabilities into a dictionary
-    scenarios_dict = {}
-    scenarios_dict["scenarios"] = scenarios_list
-    scenarios_dict["probabilities"] = probabilities_list
-
+    scenarios_dict = {
+        "scenarios": scenarios_list,
+        "probabilities": probabilities_list,
+    }
     # save the dictionary into a pickle file
     with open("Data/scenarios/1000_scenario_samples.pkl", "wb") as f:
         pickle.dump(scenarios_dict, f)
