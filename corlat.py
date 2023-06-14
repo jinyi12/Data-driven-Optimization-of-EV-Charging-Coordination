@@ -95,6 +95,7 @@ def mycallback_wrapper(model, where, callback=None):
     Returns:
         _type_: The callback class
     """
+    
     return callback(model, where)
 
 
@@ -156,7 +157,7 @@ def get_solutions(model):
     Get the solutions of the model
     
     Return:
-    solutions: np.array of shape (n_solutions, n_variables)
+    solutions (NDArray): np.array of shape (n_solutions, n_variables)
 
     """
     solutions = []
@@ -213,8 +214,8 @@ def get_solution_data(model):
     If there are duplicate solutions, the function will drop the duplicate solutions.
     
     Return:
-    solution_dict: Dictionary of solutions
-    indices_dict: Dictionary of indices
+    solution_dict (dict): Dictionary of solutions
+    indices_dict (dict): Dictionary of indices
     
     """
     solutions = get_solutions(model)
@@ -235,7 +236,7 @@ def get_var_basic_features(model):
     3. Number of non-zero coefficients in the constraint
 
     Return:
-    var_basic_features: np.array of shape (n_variables, 3). Column 1: Variable objective coefficient, Column 2: Variable type, Column 3: Number of non-zero coefficients in the constraint
+    var_basic_features (NDArray): np.array of shape (n_variables, 3). Column 1: Variable objective coefficient, Column 2: Variable type, Column 3: Number of non-zero coefficients in the constraint
     """
 
     obj = np.array(model.getAttr("Obj", model.getVars()))
@@ -271,7 +272,7 @@ def get_var_LP_features(model):
     6. Has upper bound
     
     Return:
-    var_LP_features: np.array of shape (n_variables, 6). 
+    var_LP_features (NDArray): np.array of shape (n_variables, 6). 
     Column 1: LP relaxation value at root node, 
     Column 2: Is LP relaxation value fractional,
     Column 3: LP solution value equals lower bound,
@@ -351,7 +352,7 @@ def get_var_struct_features(model):
     8. Max. coefficient of the constraint nodes connected to the variable
     
     Return:
-    var_struct_features: np.array of shape (n_variables, 8).
+    var_struct_features (NDArray): np.array of shape (n_variables, 8).
     """
 
     A = model.getA()
@@ -439,7 +440,7 @@ def get_constraints_basic_features(model):
     4. Cosine similarity with obj (each row of A with cost vector)
     
     Return:
-    constraint_basic_features: np.array of shape (n_constraints, 4).
+    constraint_basic_features (NDArray): np.array of shape (n_constraints, 4).
     """
 
     constraint_types = np.array(model.getAttr("Sense", model.getConstrs()))
@@ -487,7 +488,7 @@ def get_constraints_struct_features(model):
     5. Sum of norm of absolute values of coefficients of the variable nodes a constraint node is connected to
     
     Return:
-    constraint_struct_features: np.array of shape (n_constraints, 5).
+    constraint_struct_features (NDArray): np.array of shape (n_constraints, 5).
     """
 
     A = model.getA().tocsr()
@@ -547,7 +548,7 @@ def get_input_data(model):
     5. Get structural features of the constraints
     
     Return:
-    input_dict: Dictionary of input data. Keys: A, var_node_features, constraint_node_features
+    input_dict (dict): Dictionary of input data. Keys: A, var_node_features, constraint_node_features
     """
     A = model.getA()  # shape of n_constraints x n_variables
 
@@ -592,7 +593,7 @@ def get_A_matrix(data_dict, model):
     Get the A matrix of the model. Add the A matrix to the data_dict with new key "A".
     
     Return:
-    data_dict: Dictionary of input data. 
+    data_dict (dict): Dictionary of input data. 
     """
     A = model.getA()
     data_dict["A"] = A

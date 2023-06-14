@@ -94,12 +94,32 @@ class mycallback():
 
 
 def mycallback_wrapper(model, where, callback=None):
+    """
+    This is a wrapper function for the callback class.
+    
+    A wrapper is needed because the callback class cannot be called directly.
+
+    Args:
+        model (_type_): Gurobi model
+        where (_type_): Gurobi callback
+        callback (_type_, optional): The callback class. Defaults to None.
+
+    Returns:
+        _type_: The callback class
+    """
     return callback(model, where)
 
 
 def get_coefficients(model):
     """
     Get the coefficients of the objective function and the right hand side of the constraints
+    
+    Args:
+        model (_type_): Gurobi model
+        
+    Returns:
+        cost_vectors (NDArray): The coefficients of the objective function. np.array of shape (n_variables, )
+        rhs (NDArray): The right hand side of the constraints. np.array of shape (n_constraints, )
     """
     # get the coefficients of the objective function
     cost_vectors = model.getAttr("Obj", model.getVars())
@@ -145,7 +165,11 @@ def check_duplicates(arr, indices=None, drop=True):
 
 def get_solutions(model):
     """
-    Get the solution of the model
+    Get the solutions of the model
+    
+    Return:
+    solutions: np.array of shape (n_solutions, n_variables)
+
     """
     solutions = []
     # solution = model.getAttr("X", model.getVars())
@@ -170,6 +194,9 @@ def get_solutions(model):
 def get_indices(model):
     """
     Get the indices of the binary variables
+    
+    Return:
+    indices: List of indices of the binary variables
     """
     binary_vars = []
     indices = []
@@ -187,6 +214,11 @@ def get_indices(model):
 def get_solution_dict(solutions, indices):
     """
     Get the solution in the form of a dictionary
+    
+    Return:
+    solution_dict: Dictionary of solutions
+    indices_dict: Dictionary of indices
+    
     """
     # solution_dict = {indices[i]: solution[indices[i]] for i in range(len(indices))}
     solution_dict = {i: solutions[i] for i in range(len(solutions))}
@@ -196,7 +228,14 @@ def get_solution_dict(solutions, indices):
 
 def get_solution_data(model):
     """
-    Get the solution data of the model
+    Get the solution data of the model which includes the solutions and the indices of the binary variables
+    A duplicate solution is defined as a solution that has the same value for the binary variables.
+    If there are duplicate solutions, the function will drop the duplicate solutions.
+    
+    Return:
+    solution_dict: Dictionary of solutions
+    indices_dict: Dictionary of indices
+    
     """
     solutions = get_solutions(model)
     print("Done getting solutions")
@@ -251,11 +290,17 @@ def get_var_LP_features(model):
     4. LP solution value equals upper bound
     5. Has lower bound
     6. Has upper bound
+    
+    Return:
+    var_LP_features (NDArray): np.array of shape (n_variables, 6). 
+    Column 1: LP relaxation value at root node, 
+    Column 2: Is LP relaxation value fractional,
+    Column 3: LP solution value equals lower bound,
+    Column 4: LP solution value equals upper bound,
+    Column 5: Has lower bound,
+    Column 6: Has upper bound
     """
-    # try:
-    #     LP_relaxation_value = np.array(model.getAttr("X", model.getVars()))
 
-    # except:
     callback = mycallback()
     # get output
     model.optimize(lambda model, where: mycallback_wrapper(model, where, callback=callback))
@@ -324,6 +369,9 @@ def get_var_struct_features(model):
     6. Std. deviation of the coefficient of the constraint nodes connected to the variable
     7. Min. coefficient of the constraint nodes connected to the variable
     8. Max. coefficient of the constraint nodes connected to the variable
+    
+    Return:
+    var_struct_features (NDArray): np.array of shape (n_variables, 8).
     """
 
     A = model.getA().tocsr()
@@ -409,6 +457,9 @@ def get_constraints_basic_features(model):
     2. Constraint right-hand side
     3. Number of non-zero coefficients in the constraint
     4. Cosine similarity with obj (each row of A with cost vector)
+    
+    Return:
+    constraint_basic_features (NDArray): np.array of shape (n_constraints, 4).
     """
 
     print("Getting the sense")
@@ -461,6 +512,9 @@ def get_constraints_struct_features(model):
     3. Min. coefficient of the variables connected to the constraint
     4. Max. coefficient of the variables connected to the constraint
     5. Sum of norm of absolute values of coefficients of the variable nodes a constraint node is connected to
+    
+    Return:
+    constraint_struct_features (NDArray): np.array of shape (n_constraints, 5).
     """
 
     A = model.getA().tocsr()
@@ -517,6 +571,9 @@ def get_input_data(model):
     3. Get structural features of the variables
     4. Get basic features of the constraints
     5. Get structural features of the constraints
+    
+    Return:
+    input_dict (dict): Dictionary of input data. Keys: A, var_node_features, constraint_node_features
     """
     A = model.getA()  # shape of n_constraints x n_variables
     
@@ -594,6 +651,9 @@ def get_input_data(model):
 def get_A_matrix(data_dict, model):
     """
     Get the A matrix of the model
+    
+    Return:
+    data_dict (dict): Dictionary of input data. 
     """
     A = model.getA()
     data_dict["A"] = A
@@ -604,6 +664,9 @@ def get_A_matrix(data_dict, model):
 def get_output_solution(data_dict, model):
     """
     Get the input data and the solution data of the model
+    
+    Return:
+    data_dict: Dictionary of input data. Keys: A, var_node_features, constraint_node_features, solution, indices, current_instance_weight
     """
     solution_dict, indices_dict = get_solution_data(model)
     
@@ -629,6 +692,17 @@ def get_output_solution(data_dict, model):
 
 
 def update_current_instance_weight(data_dict, model):
+    """
+    Add the current instance weight to the data_dict with new key "current_instance_weight".
+    
+
+    Args:
+        data_dict (dict): Dictionary of input data.
+        model (_type_): Gurobi model
+
+    Returns:
+        data_dict (dict): Dictionary of input data with new key "current_instance_weight"
+    """
     
     solution_dict = data_dict["solution"]
     indices_dict = data_dict["indices"]
@@ -658,8 +732,20 @@ def update_current_instance_weight(data_dict, model):
 
 
 def get_feasibility_constrain_weights(y_true, obj_coeffs):
+    """
+    Get the feasibility constrain weights for the current instance.
+    c is the objective coefficients of the binary variables.
+    y_true is the solutions of the binary variables. 
     
-    # y_true is an array of shape ((arbritary number of solutions), num_vars)
+
+    Args:
+        y_true (NDArray): solutions of the binary variables. Shape: (n_solutions, n_variables)
+        obj_coeffs (NDArray): objective coefficients of the binary variables. Shape: (n_variables, )
+
+    Returns:
+        NDArray: feasibility constrain weights for the current instance
+    """
+    
     # Compute the weights for each training instance
                     
     c = obj_coeffs
@@ -670,17 +756,6 @@ def get_feasibility_constrain_weights(y_true, obj_coeffs):
     w_ij = w_ij / sum_w_ij
     
     return np.array(w_ij)
-
-
-def update_input(data, model):
-    """
-    Update the data with the new model
-    """
-    input_dict = get_input_data(model)
-
-    data["input"] = input_dict
-
-    return data
 
 
 config = {
@@ -759,7 +834,7 @@ if __name__ == "__main__":
 
             model = gb.read("Data/coordination_presolved/instances/" + file)
 
-            # dataset[i] = update_input(dataset[i], model)
+            
             data = get_A_matrix(data, model)
 
 
