@@ -1,3 +1,18 @@
+"""
+The following script builds the models for the implementation of the Day-Ahead EV charging scheduling, adapted from the paper:
+https://doi.org/10.1109/TSG.2015.2424912
+
+Unlike the `main_dayahead.py` script, this script focuses on generating the model files ONLY, for the Day-Ahead EV charging scheduling problem. The model files are saved in the `instances/mip/data/coordination` folder.
+
+No optimization is performed in this script. The model files are generated to be utilized for:
+    1. Gathering features for the data-driven approach.
+    2. Verifying the feasibility of the predicted charging schedules from the data-driven approach.
+    3. Testing the performance of the data-driven approach, in terms of number of violations of the constraints, and the speed up in optimization time.
+
+For details of implementation regarding the data-driven approach, please refer to the `main_dayahead.py` script.
+
+"""
+
 import gurobipy as gb
 from gurobipy import GRB
 
