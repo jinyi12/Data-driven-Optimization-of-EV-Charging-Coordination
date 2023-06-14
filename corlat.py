@@ -48,25 +48,19 @@ from sklearn.metrics.pairwise import cosine_similarity
 
 
 class mycallback():
-    """docstring for mycallback."""
+    """
+    This is a callback class that is used to get the LP relaxation solution values at the root node.  
+    """
     def __init__(self):
         super(mycallback, self).__init__()
         self.var_solution_values = None
         self.var_suboptimal_solution_values = None
         self.sol_count = None
         
-        # self.var_reduced_cost = None
-        
-        # self.const_dualsolution_values = None
-        # self.const_basis_status = None
-        
     
     def __call__(self, model, where):  
         
         if where != GRB.Callback.MIPNODE:
-            # if where == GRB.Callback.MIPSOL:
-            #     self.sol_count = model.cbGet(GRB.Callback.MIPSOL_SOLCNT)
-            #     print("Solution count: ", self.sol_count)
             return
 
         nodecount = model.cbGet(GRB.Callback.MIPNODE_NODCNT)
@@ -77,7 +71,6 @@ class mycallback():
         
         print("Status: ", model.cbGet(GRB.Callback.MIPNODE_STATUS))
         
-        # print("Node count: ", nodecount)
 
         # at each cut, we get the solution values
         if model.cbGet(GRB.Callback.MIPNODE_STATUS) == GRB.Status.OPTIMAL:
@@ -85,20 +78,36 @@ class mycallback():
         
         if model.cbGet(GRB.Callback.MIPNODE_STATUS) == GRB.Status.SUBOPTIMAL:
             self.var_suboptimal_solution_values = model.cbGetNodeRel(model.getVars())
-            # self.var_reduced_cost = fixed.getAttr(GRB.Attr.RC, fixed.getVars())
-            # self.const_dualsolution_values = fixed.getAttr(GRB.Attr.Pi, fixed.getConstrs())
-            # self.const_basis_status = fixed.getAttr(GRB.Attr.CBasis, fixed.getConstrs())
-            # .getAttr(GRB.Attr.RC)
             
 
 
 def mycallback_wrapper(model, where, callback=None):
+    """
+    This is a wrapper function for the callback class.
+    
+    A wrapper is needed because the callback class cannot be called directly.
+
+    Args:
+        model (_type_): Gurobi model
+        where (_type_): Gurobi callback
+        callback (_type_, optional): The callback class. Defaults to None.
+
+    Returns:
+        _type_: The callback class
+    """
     return callback(model, where)
 
 
 def get_coefficients(model):
     """
     Get the coefficients of the objective function and the right hand side of the constraints
+    
+    Args:
+        model (_type_): Gurobi model
+        
+    Returns:
+        cost_vectors (_type_): The coefficients of the objective function. np.array of shape (n_variables, )
+        rhs (_type_): The right hand side of the constraints. np.array of shape (n_constraints, )
     """
     # get the coefficients of the objective function
     cost_vectors = model.getAttr("Obj", model.getVars())
@@ -144,10 +153,13 @@ def check_duplicates(arr, indices=None, drop=True):
 
 def get_solutions(model):
     """
-    Get the solution of the model
+    Get the solutions of the model
+    
+    Return:
+    solutions: np.array of shape (n_solutions, n_variables)
+
     """
     solutions = []
-    # solution = model.getAttr("X", model.getVars())
     sol_count = model.getAttr("SolCount")
     for i in range(sol_count):
         model.Params.SolutionNumber = i
@@ -155,12 +167,6 @@ def get_solutions(model):
         solutions.append(solution)
         
     solutions = np.array(solutions)
-    # create dictionary
-
-    
-    # for each solution, check if there exist the same duplicate (entire array)
-    # if there exist duplicate, remove the duplicate
-    # if there exist no duplicate, keep the solution    
         
     return solutions
 
@@ -168,6 +174,9 @@ def get_solutions(model):
 def get_indices(model):
     """
     Get the indices of the binary variables
+    
+    Return:
+    indices: List of indices of the binary variables
     """
     binary_vars = []
     indices = []
@@ -185,8 +194,13 @@ def get_indices(model):
 def get_solution_dict(solutions, indices):
     """
     Get the solution in the form of a dictionary
+    
+    Return:
+    solution_dict: Dictionary of solutions
+    indices_dict: Dictionary of indices
+    
     """
-    # solution_dict = {indices[i]: solution[indices[i]] for i in range(len(indices))}
+
     solution_dict = {i: solutions[i] for i in range(len(solutions))}
     indices_dict = {"indices": indices}
     return solution_dict, indices_dict
@@ -194,7 +208,14 @@ def get_solution_dict(solutions, indices):
 
 def get_solution_data(model):
     """
-    Get the solution data of the model
+    Get the solution data of the model which includes the solutions and the indices of the binary variables
+    A duplicate solution is defined as a solution that has the same value for the binary variables.
+    If there are duplicate solutions, the function will drop the duplicate solutions.
+    
+    Return:
+    solution_dict: Dictionary of solutions
+    indices_dict: Dictionary of indices
+    
     """
     solutions = get_solutions(model)
     indices = get_indices(model)
@@ -248,11 +269,17 @@ def get_var_LP_features(model):
     4. LP solution value equals upper bound
     5. Has lower bound
     6. Has upper bound
+    
+    Return:
+    var_LP_features: np.array of shape (n_variables, 6). 
+    Column 1: LP relaxation value at root node, 
+    Column 2: Is LP relaxation value fractional,
+    Column 3: LP solution value equals lower bound,
+    Column 4: LP solution value equals upper bound,
+    Column 5: Has lower bound,
+    Column 6: Has upper bound
     """
-    # try:
-    #     LP_relaxation_value = np.array(model.getAttr("X", model.getVars()))
 
-    # except:
     callback = mycallback()
     # get output
     model.optimize(lambda model, where: mycallback_wrapper(model, where, callback=callback))
@@ -278,10 +305,6 @@ def get_var_LP_features(model):
         print("No variables")
         return None
 
-
-    # is_LP_relaxation_value_fractional = np.array(
-    #     [1 if math.modf(x)[0] != 0 else 0 for x in LP_relaxation_value]
-    # )
     
     is_LP_relaxation_value_fractional = np.where(np.modf(LP_relaxation_value)[0] != 0, 1, 0)
 
@@ -326,6 +349,9 @@ def get_var_struct_features(model):
     6. Std. deviation of the coefficient of the constraint nodes connected to the variable
     7. Min. coefficient of the constraint nodes connected to the variable
     8. Max. coefficient of the constraint nodes connected to the variable
+    
+    Return:
+    var_struct_features: np.array of shape (n_variables, 8).
     """
 
     A = model.getA()
@@ -334,11 +360,6 @@ def get_var_struct_features(model):
     if A.shape[1] == 0:
         print("No variables")
         return None
-
-    # connected_constraints = [
-    #     scipy.sparse.csr_matrix(A[:, i]).nonzero()[0].tolist()
-    #     for i in range(A.shape[1])
-    # ]
     
     connected_constraints = np.split(A.indices, A.indptr[1:-1])
     
@@ -351,33 +372,13 @@ def get_var_struct_features(model):
     std_coefficient = []
     min_coefficient = []
     max_coefficient = []
-
-    # for i, indices in enumerate(connected_constraints):
-    #     # compute degrees and coefficients directly from indices
-    #     degrees = np.array([A.indptr[j+1] - A.indptr[j] for j in indices])
-    #     coefficients = A.data[A.indptr[i]:A.indptr[i+1]]
-
-    #     # if there are no connected constraints, set the values to 0
-    #     if degrees.size == 0:
-    #         degrees = np.array([0])
-    #         coefficients = np.array([0])
-
-    #     mean_degree.append(np.mean(degrees))
-    #     std_degree.append(np.std(degrees))
-    #     min_degree.append(np.min(degrees))
-    #     max_degree.append(np.max(degrees))
-
-    #     mean_coefficient.append(np.mean(coefficients))
-    #     std_coefficient.append(np.std(coefficients))
-    #     min_coefficient.append(np.min(coefficients))
-    #     max_coefficient.append(np.max(coefficients))
     
     degrees = np.diff(A.indptr)
     non_zero_cons_for_each_var = np.split(csc_A.indices, csc_A.indptr[1:-1])
     coefficients = np.split(csc_A.data, csc_A.indptr[1:-1])
     
     for i in range(len(non_zero_cons_for_each_var)):
-        # print("Indices of non zero cons: ", non_zero_cons_for_each_var[i])
+        
         if degrees[non_zero_cons_for_each_var[i]].size == 0:
             print("No connected constraints")
             mean_degree.append(0)
@@ -387,7 +388,7 @@ def get_var_struct_features(model):
             continue
         mean_degree.append(np.mean(degrees[non_zero_cons_for_each_var[i]]))
         std_degree.append(np.std(degrees[non_zero_cons_for_each_var[i]]))
-        min_degree.append(np.min(degrees[non_zero_cons_for_each_var[i]])) # this part got problem
+        min_degree.append(np.min(degrees[non_zero_cons_for_each_var[i]])) 
         max_degree.append(np.max(degrees[non_zero_cons_for_each_var[i]]))
     
     mean_degree = np.array(mean_degree)
@@ -436,6 +437,9 @@ def get_constraints_basic_features(model):
     2. Constraint right-hand side
     3. Number of non-zero coefficients in the constraint
     4. Cosine similarity with obj (each row of A with cost vector)
+    
+    Return:
+    constraint_basic_features: np.array of shape (n_constraints, 4).
     """
 
     constraint_types = np.array(model.getAttr("Sense", model.getConstrs()))
@@ -481,6 +485,9 @@ def get_constraints_struct_features(model):
     3. Min. coefficient of the variables connected to the constraint
     4. Max. coefficient of the variables connected to the constraint
     5. Sum of norm of absolute values of coefficients of the variable nodes a constraint node is connected to
+    
+    Return:
+    constraint_struct_features: np.array of shape (n_constraints, 5).
     """
 
     A = model.getA().tocsr()
@@ -538,6 +545,9 @@ def get_input_data(model):
     3. Get structural features of the variables
     4. Get basic features of the constraints
     5. Get structural features of the constraints
+    
+    Return:
+    input_dict: Dictionary of input data. Keys: A, var_node_features, constraint_node_features
     """
     A = model.getA()  # shape of n_constraints x n_variables
 
@@ -574,30 +584,15 @@ def get_input_data(model):
     )
     input_dict["constraint_node_features"] = constraint_node_features
 
-    # input_dict["cost_vectors"] = cost_vectors
-    # input_dict["rhs"] = rhs
-
-    # variable_features = get_variable_features(model)
-
-    # coefficients of the constraint is just a row of A
-    # normalize the coefficients of the constraint by dividing each coefficient with the row norm of A
-
-    # row_norm = scipy.sparse.linalg.norm(input_dict["A"], axis=1)[:, None]
-    # input_dict["A"] = input_dict["A"] / row_norm
-
-    # basically bias is normalized by dividing each bias with its respective row norm of A
-    # input_dict["rhs"] = input_dict["rhs"] / row_norm.squueze()
-
-    # coefficients for the variable nodes (which are cost vectors) are normalized by objective norm
-    # objective norm is the norm of the cost vector
-    # input_dict["cost_vectors"] = input_dict["cost_vectors"] / np.linalg.norm(input_dict["cost_vectors"])
-
     return input_dict
 
 
 def get_A_matrix(data_dict, model):
     """
-    Get the A matrix of the model
+    Get the A matrix of the model. Add the A matrix to the data_dict with new key "A".
+    
+    Return:
+    data_dict: Dictionary of input data. 
     """
     A = model.getA()
     data_dict["A"] = A
@@ -608,7 +603,12 @@ def get_A_matrix(data_dict, model):
 
 def get_output_solution(data_dict, model):
     """
-    Get the input data and the solution data of the model
+    Get the input data and the solution data of the model.
+    Add the solution data to the data_dict with new keys "solution" and "indices".
+    Also add the current instance weight to the data_dict with new key "current_instance_weight".
+    
+    Return:
+    data_dict: Dictionary of input data. Keys: A, var_node_features, constraint_node_features, solution, indices, current_instance_weight
     """
     solution_dict, indices_dict = get_solution_data(model)
     # convert dictionary of solutions to array of arrays
@@ -631,7 +631,18 @@ def get_output_solution(data_dict, model):
     return data_dict
 
 
-def update_current_instance_weight(data_dict, model):
+def update_current_instance_weight(data_dict: dict, model):
+    """
+    Add the current instance weight to the data_dict with new key "current_instance_weight".
+    
+
+    Args:
+        data_dict (dict): Dictionary of input data.
+        model (_type_): Gurobi model
+
+    Returns:
+        data_dict (dict): Dictionary of input data with new key "current_instance_weight"
+    """
     
     solution_dict = data_dict["solution"]
     indices_dict = data_dict["indices"]
@@ -662,15 +673,19 @@ def update_current_instance_weight(data_dict, model):
 
 
 def get_feasibility_constrain_weights(y_true, obj_coeffs):
+    """
+    Get the feasibility constrain weights for the current instance.
+    c is the objective coefficients of the binary variables.
+    y_true is the solutions of the binary variables. 
     
-    # # y_true is a tensor of shape (batch_size, (arbritary shape), num_vars)
-    # # convert each array in y_true to a binary array
-    # y_true_binary = []
-    # for i in range(y_true.shape[0]):
-    #     binarized = np.zeros(y_true[i].shape)
-    #     binarized[y_true[i] > 0.5] = 1
-    #     y_true_binary.append(binarized)
-    # y_true_binary = np.array(y_true_binary)
+
+    Args:
+        y_true (NDArray): solutions of the binary variables. Shape: (n_solutions, n_variables)
+        obj_coeffs (NDArray): objective coefficients of the binary variables. Shape: (n_variables, )
+
+    Returns:
+        NDArray: feasibility constrain weights for the current instance
+    """
     
     # Compute the weights for each training instance
                     
@@ -705,13 +720,13 @@ def parse_args():
 
 
 if __name__ == "__main__":
-    # list of all the files in the directory
+    
     config = parse_args()
     dataset = []
     
-    # model_files = ["cor-lat-2f+r-u-10-10-10-5-100-3.002.b86.000000.prune2.lp"]
     # if argument "--update" is passed, then update the dataset for input data
     if not config["update"]:
+        # list of all the files in the directory
         model_files = os.listdir("instances/mip/data/COR-LAT")
         print("Creating the dataset")
         for i, file in enumerate(model_files):
