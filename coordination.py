@@ -680,7 +680,7 @@ def get_output_solution(data_dict, model):
     binary_obj_coeffs = model.getAttr("Obj", model.getVars())[binary_indices]
     
     # calculate the feasibility constrain weights
-    current_instance_weight = get_feasibility_constrain_weights(binary_solutions, binary_obj_coeffs)
+    current_instance_weight = get_feasibility_promoting_weights(binary_solutions, binary_obj_coeffs)
 
     data_dict["solution"] = solution_dict
     data_dict["indices"] = indices_dict
@@ -718,8 +718,8 @@ def update_current_instance_weight(data_dict, model):
     obj_coeffs = np.array(model.getAttr("Obj", model.getVars()))
     binary_obj_coeffs = obj_coeffs[binary_indices]
     
-    # calculate the feasibility constrain weights
-    current_instance_weight = get_feasibility_constrain_weights(binary_solutions, binary_obj_coeffs)
+    # calculate the feasibility promoting weights
+    current_instance_weight = get_feasibility_promoting_weights(binary_solutions, binary_obj_coeffs)
     
     # print("Current instance weight shape: ", current_instance_weight.shape)
     
@@ -731,9 +731,9 @@ def update_current_instance_weight(data_dict, model):
     return data_dict
 
 
-def get_feasibility_constrain_weights(y_true, obj_coeffs):
+def get_feasibility_promoting_weights(y_true, obj_coeffs):
     """
-    Get the feasibility constrain weights for the current instance.
+    Get the feasibility promoting weights for the current instance.
     c is the objective coefficients of the binary variables.
     y_true is the solutions of the binary variables. 
     
@@ -743,7 +743,7 @@ def get_feasibility_constrain_weights(y_true, obj_coeffs):
         obj_coeffs (NDArray): objective coefficients of the binary variables. Shape: (n_variables, )
 
     Returns:
-        NDArray: feasibility constrain weights for the current instance
+        NDArray: feasibility promoting weights for the current instance
     """
     
     # Compute the weights for each training instance
