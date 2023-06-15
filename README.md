@@ -23,7 +23,11 @@ nbStations = 300
 mean = 0.6
 std = 0.1
 ```
+The output data will be located at `"Data/SOC.csv"`
 
 ## Building optimization models
-
+Run 
+```{python}
+python generate_modelfiles_coordination.py
+```
 
