@@ -25,6 +25,7 @@ if __name__ == "__main__":
     # takes in command line argument for nScenarios
 
     nScenarios = int(sys.argv[1]) if len(sys.argv) > 1 else 100
+    n_sc_red = 10
     # read data from excel file, and from columns A to E
     df = pd.read_excel(filename, index_col=0, usecols="A:E")
 
@@ -145,7 +146,7 @@ if __name__ == "__main__":
             scenarios[i] = scenarios[i] * (max_irradiance - min_irradiance) + min_irradiance
 
         S = scen_red.ScenarioReduction(scenarios, probabilities=None, cost_func='General', r = 2)
-        S.fast_forward_sel(n_sc_red=10, num_threads = 4)  # use fast forward selection algorithm to reduce to 5 scenarios with 4 threads 
+        S.fast_forward_sel(n_sc_red=n_sc_red, num_threads = 4)  # use fast forward selection algorithm to reduce to 5 scenarios with 4 threads 
         scenarios_reduced = S.scenarios_reduced  # get reduced scenarios
         probabilities_reduced = S.probabilities_reduced  # get reduced probabilities
 
@@ -158,5 +159,5 @@ if __name__ == "__main__":
         "probabilities": probabilities_list,
     }
     # save the dictionary into a pickle file
-    with open("Data/scenarios/1000_scenario_samples.pkl", "wb") as f:
+    with open(f"Data/scenarios/{nSamples}_scenario_samples.pkl", "wb") as f:
         pickle.dump(scenarios_dict, f)

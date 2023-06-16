@@ -30,8 +30,6 @@ from tqdm import tqdm
 # default configs in toml file
 default_config = {
     "input_file": "Data/scenarios/1000_scenario_samples.pkl",
-    "input_file_single": "Data/scenarios/scenarios_3.csv",
-    "solve_batch": True,
 }
 
 
@@ -39,8 +37,6 @@ def parse_args():
     "Overriding default argments"
     argparser = argparse.ArgumentParser(description='Parse args for solver')
     argparser.add_argument('--input_file', type=str, default=default_config.input_file, help='input file')
-    argparser.add_argument('--input_file_single', type=str, default=default_config.input_file_single, help='input file single')
-    argparser.add_argument('--solve_batch', type=bool, default=default_config.solve_batch, help='solve batch')
     
     args = argparser.parse_args()
     vars(default_config).update(vars(args))
@@ -549,6 +545,6 @@ if __name__ == "__main__":
         model.update()
 
         # save model to .lp file at "instances/mip/data/coordination/"
-        model.write("instances/mip/data/coordination/coordination_{}.lp".format(n_scenario))
+        model.write(f"instances/mip/data/coordination/coordination_{n_scenario}.lp")
         
         
