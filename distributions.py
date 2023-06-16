@@ -1,3 +1,12 @@
+"""
+
+This script explores generation of arrival and departure distributions of EVs at a parking lot using convolutions of normal and weibull distributions. The parameters for the distributions are based on this paper: https://www.mdpi.com/1996-1073/13/19/5003.
+
+The arrival and departure distributions are convolution distributions. The convolution of two distributions represents the probability distribution of the sum of random variables drawn from each of the original distributions.
+
+We first generate realizations of the respective distributions. Then we sum the random variables of the distributions up accordingly. A KDE is then applied to the resulting distribution to infer the parameters that represents the probability distribution. Then we sample arrival and departure times from the KDE distributions.
+"""
+
 # %%
 import numpy as np
 import scipy

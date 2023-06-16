@@ -2,6 +2,19 @@
 
 This project explores data-driven optimization for EV charging coordination at a parking deck. The optimization problem is formulated as a stochastic optimization of EV charging coordination at a parking deck, with varying solar generation scenarios. Data utilized in this project include Malaysia's solar irradiance data for the year 2020. All other data are generated and simulated.
 
+The idea of data-driven optimization explored is to utilize a neural network to map between the input features and the output solutions. The input features are the features of the optimization problem, and the output solutions are the assignments of binary variables. The neural network is trained on data generated from solving the optimization problem. The neural network is trained to learn the conditional probability distribution of the output solutions given the input features.
+
+To reduce the size of the dataset due to large number of constraint nodes and variable nodes, the presolved model is utilized. The input features, which consisted of **Variable Node LP features**, **Variable Node Basic features**, **Variable Node Structural features**, **Constraint Node Basic features** and **Constraint Node Structural features** are extracted from the presolved model. The output solutions, which are the assignments of binary variables are obtained by solving the original model (not the presolve model). The neural network is trained to learn the conditional probability distribution of the output solutions given the input features.
+
+## 0. To start, extract `Data.zip` and `Models.zip`
+`Data.zip` contains the data used in this project. `Models.zip` contains the trained models for **v1 version of CORLAT dataset**. Extract them to the root directory of this project.
+
+The models contained in `Models.zip` are trained on the v1 version of the CORLAT dataset. The v1 version of the CORLAT dataset only contains the optimal solution for each model instance. They mostly serve as a backup and might not be functional. 
+
+<!-- text in red -->
+<span style="color:red">Warning: Recent consistency checks have not been performed. Data and models for v1 CORLAT dataset could be regenerated if needed (mentioned in section 8.3 of this README.)</span>
+<!-- end of text in red -->
+
 ## 1. To generate solar generation scenarios and their respective scenario probabilities
 Run 
 ```{python}
@@ -173,3 +186,24 @@ In the case where the v1 dataset is not comparable or unusable for verification 
 2. Run the `preprocess_{dataset}.ipynb` notebook to preprocess the raw data. But save the output as `Data/{dataset}/processed_data/{dataset}_preprocessed_v1.pickle`.
 3. Run the `make_{dataset}_dataset.ipynb` notebook to make the dataset for training. But save the output as `Data/{dataset}/train_test_data/{dataset}_v1`.
 4. Train the MLP neural network, the weights in this case should be 1 since there is only 1 solution per sample.
+
+## References
+### 1. Two-Stage Economic Operation of Microgrid-Like Electric Vehicle Parking Deck
+link: https://doi.org/10.1109/TSG.2015.2424912
+EV charging coordination is based on this paper, with modifications. Refer to `main_dayahead.py` for the modifications.
+
+### 2. Solving Mixed Integer Programs Using Neural Networks
+link: http://arxiv.org/abs/2012.13349
+The custom loss function is based on this paper. Idea of obtaining node features for GNN training is also based on this paper.
+
+### 3. Electric Vehicle Aggregate Power Flow Prediction and Smart Charging System for Distributed Renewable Energy Self-Consumption Optimization
+Arrival and departure distributions of EVs at a parking lot using convolutions of normal and weibull distributions. The parameters for the distributions are based on this paper.
+link: https://www.mdpi.com/1996-1073/13/19/5003
+
+### 4. Supervised Neighborhood Selection and MIP-based Primal Heuristics
+Variable node and constraint node features are based on this thesis.
+link: https://summit.sfu.ca/_flysystem/fedora/sfu_migrate/19915/etd20696.pdf
+
+### 5. Exact Combinatorial Optimization with Graph Convolutional Neural Networks
+Other variable node and constraint node features are based on this paper.
+link: https://arxiv.org/abs/1906.01629
