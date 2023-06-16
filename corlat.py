@@ -161,15 +161,18 @@ def get_solutions(model):
 
     """
     solutions = []
-    sol_count = model.getAttr("SolCount")
-    for i in range(sol_count):
-        model.Params.SolutionNumber = i
-        solution = model.getAttr("Xn", model.getVars())
+    if model.params.PoolSearchMode == 2:
+        sol_count = model.getAttr("SolCount")
+        for i in range(sol_count):
+            model.Params.SolutionNumber = i
+            solution = model.getAttr("Xn", model.getVars())
+            solutions.append(solution)
+        
+    else:
+        solution = model.getAttr("X", model.getVars())
         solutions.append(solution)
         
-    solutions = np.array(solutions)
-        
-    return solutions
+    return np.array(solutions)
 
 
 def get_indices(model):

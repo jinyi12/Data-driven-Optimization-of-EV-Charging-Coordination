@@ -166,3 +166,10 @@ The choice of file format is important. The current implementation uses `pickle`
 In the case where there are large number of features, building a large MLP might not be feasible. A potential solution is to use a **Graph Neural Network (GNN)**, although this is in our roadmap. If a baseline model such as a MLP needs to be used, a potential solution is to use **feature reduction** techniques such as **Principal Component Analysis (PCA)**. For binary features, **Binary Principal Component Analysis (BPCA)** or **Multiple Correspondence Analysis (MCA)** can be used. 
 
 A Neural Network (NN) can be used to map the reduced features to the output solutions. Alternatively, the idea of mapping between function spaces can be used. This could be done by using a NN to map between the latent spaces of input and output.
+
+### 8.3 Potential issues with v1 dataset
+In the case where the v1 dataset is not comparable or unusable for verification purposes, the dataset for the v1 problem, which does not include multiple solutions, could be regenerated. This will require the following steps:
+1. Run the `{dataset}.py` script to generate raw data, specifying the `PoolSearchMode` to be 0. This will collect only the optimal solution.
+2. Run the `preprocess_{dataset}.ipynb` notebook to preprocess the raw data. But save the output as `Data/{dataset}/processed_data/{dataset}_preprocessed_v1.pickle`.
+3. Run the `make_{dataset}_dataset.ipynb` notebook to make the dataset for training. But save the output as `Data/{dataset}/train_test_data/{dataset}_v1`.
+4. Train the MLP neural network, the weights in this case should be 1 since there is only 1 solution per sample.

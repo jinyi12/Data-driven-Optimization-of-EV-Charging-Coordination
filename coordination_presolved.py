@@ -172,23 +172,18 @@ def get_solutions(model):
 
     """
     solutions = []
-    # solution = model.getAttr("X", model.getVars())
-    sol_count = model.getAttr("SolCount")
-    for i in range(sol_count):
-        print("Getting solution: ", i)
-        model.Params.SolutionNumber = i
-        solution = model.getAttr("Xn", model.getVars())
+    if model.params.PoolSearchMode == 2:
+        sol_count = model.getAttr("SolCount")
+        for i in range(sol_count):
+            model.Params.SolutionNumber = i
+            solution = model.getAttr("Xn", model.getVars())
+            solutions.append(solution)
+        
+    else:
+        solution = model.getAttr("X", model.getVars())
         solutions.append(solution)
         
-    solutions = np.array(solutions)
-    # create dictionary
-
-    
-    # for each solution, check if there exist the same duplicate (entire array)
-    # if there exist duplicate, remove the duplicate
-    # if there exist no duplicate, keep the solution    
-        
-    return solutions
+    return np.array(solutions)
 
 
 def get_indices(model):
