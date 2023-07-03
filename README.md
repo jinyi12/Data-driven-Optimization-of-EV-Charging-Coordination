@@ -207,3 +207,6 @@ link: https://summit.sfu.ca/_flysystem/fedora/sfu_migrate/19915/etd20696.pdf
 ### 5. Exact Combinatorial Optimization with Graph Convolutional Neural Networks
 Other variable node and constraint node features are based on this paper.
 link: https://arxiv.org/abs/1906.01629
+
+## Additional References
+For additional references for literature review on the topic of Machine Learning for Combinatorial Optimization, please have a look [here](https://github.com/Thinklab-SJTU/awesome-ml4co).
